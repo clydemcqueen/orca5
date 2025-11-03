@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="seafloor"> <static>true</static>
+    <link name="link">
+      <collision name="collision">
+        <geometry>
+          <heightmap>
+            <uri>model://seafloor/heightmap.png</uri>
+            <size>20 20 1</size>
+          </heightmap>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <heightmap>
+            <use_terrain_paging>false</use_terrain_paging>
+            <texture>
+              <diffuse>model://seafloor/materials/textures/2024_10_08_11-40-27.jpg</diffuse>
+              <normal>model://seafloor/materials/textures/flat_normal.png</normal>
+              <size>20</size>
+            </texture>
+            <uri>model://seafloor/heightmap.png</uri>
+            <size>20 20 1</size>
+            <!-- The pos element must match the seafloor pose in pnw.world. -->
+            <pos>0 0 -4</pos>
+          </heightmap>
+        </geometry>
+        <material>
+          <!-- TODO I am trying to get a matte surface, but no luck so far. -->
+          <pbr>
+            <metal>
+              <metalness>0.0</metalness>
+              <roughness>1.0</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

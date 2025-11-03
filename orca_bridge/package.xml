@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>orca_bridge</name>
+  <version>0.1.0</version>
+  <description>ORB_SLAM in ArduSub - code</description>
+  <maintainer email="clyde@mcqueen.net">Clyde McQueen</maintainer>
+  <license>MIT</license>
+
+  <depend>nav_msgs</depend>
+  <depend>orb_slam3_msgs</depend>
+  <depend>orca_msgs</depend>
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

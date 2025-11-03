@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>orca_bringup</name>
+  <version>0.1.0</version>
+  <description>ORB_SLAM in ArduSub - bringup</description>
+  <maintainer email="clyde@mcqueen.net">Clyde McQueen</maintainer>
+  <license>MIT</license>
+
+  <depend>ardupilot_gazebo</depend>
+  <depend>nav_msgs</depend>
+  <depend>orb_slam3_ros</depend>
+  <depend>orca_bridge</depend>
+  <depend>ros_gz_bridge</depend>
+  <depend>ros_gz_image</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
