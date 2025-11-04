@@ -138,7 +138,7 @@ class SlamMaps:
 
         if self.current_map is None or msg.map_id not in self.maps:
             logger.info(f'Create map {msg.map_id}')
-            t_map_base = sub.t_map_base_ned.ned_to_enu_frame()  # Use axes-only conversion
+            t_map_base = sub.t_map_base.mult(geometry.Pose.T_STANDARD_FRAME)  # Back out the 90d NED->ENU rotation
             self.maps[msg.map_id] = SlamMap(msg.map_id, sub.sonar_rf_distance, slam_rf_distance, t_map_base)
             self.current_map = self.maps[msg.map_id]
         else:

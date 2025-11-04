@@ -11,10 +11,7 @@ class Sub:
 
     # Listen to these MAVLink messages
     MAVLINK_MSGS = [
-        'ATTITUDE',  # Orientation, always available
         'EKF_STATUS_REPORT',  # Filter status
-        'GLOBAL_POSITION_INT',  # Altitude above home, use if filter_status == ALT_ONLY
-        'LOCAL_POSITION_NED',  # Position, use if filter_status == HORIZ_REL
         'RANGEFINDER',  # Sonar rangefinder
     ]
 
@@ -22,7 +19,7 @@ class Sub:
         self.last_heartbeat_s = 0.0
         self.ekf_status_report = orca_msgs.msg.FilterStatus()  # Empty message
         self.ekf_status_time: float | None = None
-        self.t_map_base_ned = geometry.Pose()
+        self.t_map_base = geometry.Pose()
         self.sonar_rf_distance = None
 
     def ekf_const_pos(self):
@@ -47,19 +44,12 @@ class Sub:
                 break
 
             msg_type = msg.get_type()
-            if msg_type == 'ATTITUDE':
-                self.t_map_base_ned.set_euler(msg.roll, msg.pitch, msg.yaw)
-            elif msg_type == 'EKF_STATUS_REPORT':
+            if msg_type == 'EKF_STATUS_REPORT':
                 old_flags = self.ekf_status_report.flags
                 self.ekf_status_report = msg
                 self.ekf_status_time = now_s
                 if old_flags != self.ekf_status_report.flags:
                     logger.info(f'EKF status change {old_flags} => {self.ekf_status_report.flags}, const_pos={self.ekf_const_pos()}, horiz_rel={self.ekf_horiz_rel()}')
-            elif msg_type == 'GLOBAL_POSITION_INT':
-                if self.ekf_const_pos():
-                    self.t_map_base_ned.set_altitude(-msg.relative_alt / 1e3)  # Height above home, flip sign for NED
-            elif msg_type == 'LOCAL_POSITION_NED':
-                self.t_map_base_ned.set_position(msg.x, msg.y, msg.z)
             elif msg_type == 'RANGEFINDER':
                 # Hack to support testing
                 self.sonar_rf_distance = msg.distance if msg.distance > 0.0 else 1.0

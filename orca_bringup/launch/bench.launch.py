@@ -88,9 +88,9 @@ def generate_launch_description():
             cmd=[
                 'ros2', 'bag', 'record',
                 '--include-hidden-topics',
+                '/ap/pose/filtered',
                 '/camera_info',
                 '/camera_pose',
-                '/ekf_pose',
                 '/ekf_status',
                 '/rf_scale',
                 '/rosout',
