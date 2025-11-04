@@ -42,8 +42,10 @@ ENV NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute
 ENV QT_X11_NO_MITSHM=1
 
 # Install some ardupilot and ardupilot_gazebo prereqs
+# openjdk-17-jdk is required for Micro-XRCE-DDS-Gen
 RUN apt-get update \
   && apt-get -y --quiet --no-install-recommends install \
+    openjdk-17-jdk \
     python3-pip \
     python3-wxgtk4.0 \
     rapidjson-dev \
@@ -77,25 +79,6 @@ RUN groupadd --gid $USER_GID $USERNAME \
 USER $USERNAME
 ENV USER=$USERNAME
 
-# Clone ArduSub code
-WORKDIR /home/$USERNAME
-RUN git clone https://github.com/clydemcqueen/ardupilot.git --recurse-submodules \
-  && cd ardupilot \
-  && git checkout 9eb5dc4
-
-# Install ArduSub prereqs (this also appends to .bashrc)
-WORKDIR /home/$USERNAME/ardupilot
-ENV SKIP_AP_EXT_ENV=1 SKIP_AP_GRAPHIC_ENV=1 SKIP_AP_COV_ENV=1 SKIP_AP_GIT_CHECK=1
-RUN Tools/environment_install/install-prereqs-ubuntu.sh -y
-
-# Build ArduSub
-# Note: waf will capture all of the environment variables in ardupilot/.lock-waf_linux_build.
-# Any change to enviroment variables will cause a re-build.
-# To avoid this call sim_vehicle.py with the "--no-rebuild" option.
-WORKDIR /home/$USERNAME/ardupilot
-RUN modules/waf/waf-light configure --board sitl \
-  && modules/waf/waf-light build --target bin/ardusub
-
 # Build for Gazebo Harmonic, define this before building ardupilot_gazebo
 ENV GZ_VERSION=harmonic
 
@@ -103,10 +86,22 @@ ENV GZ_VERSION=harmonic
 WORKDIR /home/$USERNAME
 RUN mkdir -p colcon_ws/src/orca5
 
-# Get workspace repos
+# Install MicroXRCEDDSGen, required for ardupilot_sitl build
+WORKDIR /home/$USERNAME/colcon_ws
+RUN git clone --recurse-submodules https://github.com/ardupilot/Micro-XRCE-DDS-Gen.git
+WORKDIR /home/$USERNAME/colcon_ws/Micro-XRCE-DDS-Gen
+RUN JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ./gradlew assemble
+ENV PATH="/home/$USERNAME/colcon_ws/Micro-XRCE-DDS-Gen/scripts:${PATH}"
+
+# Get workspace repos, this includes ardupilot and micro_ros_agent
 WORKDIR /home/$USERNAME/colcon_ws/src
 COPY --chown=$USER_UID:$USER_GID workspace.repos orca5
 RUN vcs import --recursive < orca5/workspace.repos
+
+# Install ArduSub prereqs (this appends to .bashrc)
+WORKDIR /home/$USERNAME/colcon_ws/src/ardupilot
+ENV SKIP_AP_EXT_ENV=1 SKIP_AP_GRAPHIC_ENV=1 SKIP_AP_COV_ENV=1 SKIP_AP_GIT_CHECK=1
+RUN Tools/environment_install/install-prereqs-ubuntu.sh -y
 
 # Run rosdep over workspace repos
 # Fun fact: rosdep will automatically elevate permissions, but apt-get will not, so it requires sudo

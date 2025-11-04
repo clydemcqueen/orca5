@@ -14,6 +14,7 @@ import pymavlink.dialects.v20.ardupilotmega as apm
 import pymavlink.mavutil
 import rclpy
 import rclpy.node
+import rclpy.qos
 import rclpy.serialization
 import rclpy.time
 import sensor_msgs.msg
@@ -87,8 +88,11 @@ class MonoSlamBridge(rclpy.node.Node):
         self.map_sub = self.create_subscription(sensor_msgs.msg.PointCloud2, 'map_points', self.map_callback, 10)
         self.slam_sub = self.create_subscription(orb_slam3_msgs.msg.SlamStatus, 'slam_status', self.slam_callback, 10)
 
+        # /ap/... topics are published best-effort
+        best_effort = rclpy.qos.QoSProfile(reliability=rclpy.qos.QoSReliabilityPolicy.BEST_EFFORT, depth=10)
+        self.ap_pose_sub = self.create_subscription(geometry_msgs.msg.PoseStamped, 'ap/pose/filtered', self.ap_pose_callback, best_effort)
+
         # Publishers
-        self.ekf_pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'ekf_pose', 10)
         self.ekf_status_pub = self.create_publisher(orca_msgs.msg.FilterStatus, 'ekf_status', 10)
         self.scaled_map_pub = self.create_publisher(sensor_msgs.msg.PointCloud2, 'map_points/scaled', 10)
         self.rf_scale_pub = self.create_publisher(geometry_msgs.msg.PointStamped, 'rf_scale', 10)
@@ -267,10 +271,20 @@ class MonoSlamBridge(rclpy.node.Node):
             return
 
         self.scaled_map_pub.publish(slam.scale_cloud(msg, self.maps.current_map.scale))
-    
+
+    def ap_pose_callback(self, msg: geometry_msgs.msg.PoseStamped):
+        self.sub.t_map_base = geometry.Pose.from_pose_msg(msg.pose)
+
+        # Publish map -> base_link, note that this is from the EKF, not the SLAM pose
+        tf_msg = geometry_msgs.msg.TransformStamped()
+        tf_msg.header.stamp = msg.header.stamp
+        tf_msg.header.frame_id = 'map'
+        tf_msg.child_frame_id = 'base_link'
+        tf_msg.transform = self.sub.t_map_base.to_transform_msg()
+        self.tf_broadcaster.sendTransform(tf_msg)
+
     def timer_callback(self):
         """Update ArduSub state and publish the results."""
-
         now = self.get_clock().now()
         now_stamp = now.to_msg()
         now_s = time_to_s(now)
@@ -290,22 +304,6 @@ class MonoSlamBridge(rclpy.node.Node):
         ekf_status_msg.terrain_alt_variance = self.sub.ekf_status_report.terrain_alt_variance
         ekf_status_msg.airspeed_variance = self.sub.ekf_status_report.airspeed_variance
         self.ekf_status_pub.publish(ekf_status_msg)
-
-        # Publish the ROV pose as determined by the ArduSub EKF
-        t_map_base_from_ekf = self.sub.t_map_base_ned.ned_to_enu_standard()  # Swaps axes and applies 90d yaw rotation
-        ekf_pose_stamped_msg = geometry_msgs.msg.PoseStamped()
-        ekf_pose_stamped_msg.header.stamp = now_stamp
-        ekf_pose_stamped_msg.header.frame_id = 'map'
-        ekf_pose_stamped_msg.pose = t_map_base_from_ekf.to_pose_msg()
-        self.ekf_pose_pub.publish(ekf_pose_stamped_msg)
-
-        # Publish map -> base_link, note that this is from the EKF, not the SLAM pose
-        tf_msg = geometry_msgs.msg.TransformStamped()
-        tf_msg.header.stamp = now_stamp
-        tf_msg.header.frame_id = 'map'
-        tf_msg.child_frame_id = 'base_link'
-        tf_msg.transform = t_map_base_from_ekf.to_transform_msg()
-        self.tf_broadcaster.sendTransform(tf_msg)
 
 
 def main(args=None):

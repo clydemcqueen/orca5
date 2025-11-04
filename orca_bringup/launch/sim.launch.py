@@ -20,6 +20,10 @@ def generate_launch_description():
     orca_bringup_dir = get_package_share_directory('orca_bringup')
     sub_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub.parm')
 
+    ardupilot_sitl_dir = get_package_share_directory('ardupilot_sitl')
+    udp_dds_parm_file = os.path.join(ardupilot_sitl_dir, 'config', 'default_params', 'dds_udp.parm')
+    ardusub_param_files = f'{sub_parm_file},{udp_dds_parm_file}'
+
     nodes = [
         DeclareLaunchArgument(
             'ardusub',
@@ -113,9 +117,9 @@ def generate_launch_description():
             cmd=[
                 'ros2', 'bag', 'record',
                 '--include-hidden-topics',
+                '/ap/pose/filtered',
                 '/camera_info',
                 '/camera_pose',
-                '/ekf_pose',
                 '/ekf_status',
                 '/model/orca5/odometry',
                 '/rf_scale',
@@ -153,11 +157,20 @@ def generate_launch_description():
             }.items(),
         ),
 
-        # Launch ArduSub w/ SIM_JSON. Make sure ardusub is on the $PATH. To use the heavy (6dof) model: specify
-        # vectored_6dof as the model, AND the default params must set magic ArduSub parameter FRAME_CONFIG to 2.0.
-        # Yaw is provided by Gazebo, so the start yaw value is ignored.
+        # Launch the Micro ROS agent
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(ardupilot_sitl_dir, 'launch', 'micro_ros_agent.launch.py')),
+            launch_arguments={
+                "transport": "udp4",
+            }.items(),
+            condition=IfCondition(LaunchConfiguration('ardusub')),
+        ),
+
+        # Launch ArduSub w/ SIM_JSON. To use the heavy (6dof) model: specify vectored_6dof as the model, AND the default
+        # params must set magic ArduSub parameter FRAME_CONFIG to 2.0. Yaw is provided by Gazebo, so the initial yaw
+        # value is ignored.
         ExecuteProcess(
-            cmd=['ardusub', '-S', '-w', '-M', 'JSON', '--defaults', sub_parm_file,
+            cmd=['ardusub', '-S', '-w', '-M', 'JSON', '--defaults', ardusub_param_files,
                  '-I0', '--home', '47.6302,-122.3982391,-0.1,0'],
             output='screen',
             condition=IfCondition(LaunchConfiguration('ardusub')),

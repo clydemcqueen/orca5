@@ -14,11 +14,13 @@ import transforms3d
 class Pose:
     """Simple pose object, using 2 tuples"""
 
-    # Static transform camera_sensor (OpenCV) -> camera_link (FLU)
+    # Static transform camera_sensor (OpenCV) -> camera_link (FLU), and inverse
     T_OPENCV_FLU = None
-    
-    # Static transform camera_link (FLU) -> camera_sensor (OpenCV)
     T_FLU_OPENCV = None
+
+    # Static transform "standard" to "frame", and inverse
+    T_STANDARD_FRAME = None
+    T_FRAME_STANDARD = None
 
     def __init__(self, p: tuple[float, float, float] = (0., 0., 0.), q: tuple[float, float, float, float] = (1., 0., 0., 0.)):
         self.p: tuple[float, float, float] = p
@@ -157,3 +159,6 @@ class Pose:
 Pose.T_OPENCV_FLU = Pose()
 Pose.T_OPENCV_FLU.set_euler(0, -math.pi / 2, math.pi / 2)
 Pose.T_FLU_OPENCV = Pose.T_OPENCV_FLU.inverse()
+Pose.T_FRAME_STANDARD = Pose()
+Pose.T_FRAME_STANDARD.set_euler(0, 0, math.pi / 2)
+Pose.T_STANDARD_FRAME = Pose.T_FRAME_STANDARD.inverse()

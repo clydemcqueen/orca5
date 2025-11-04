@@ -281,6 +281,17 @@ class TestPoseCoordinateConversions(unittest.TestCase):
         pose_back = pose_enu.enu_to_ned_frame()
         self.assertPoseAlmostEqual(pose_ned, pose_back)
 
+    def test_standard_frame_static_transforms(self):
+        """Test T_STANDARD_FRAME and T_FRAME_STANDARD static transforms."""
+        pose_enu_standard = Pose(p=(1.0, 2.0, 3.0), q=(1.0, 0.0, 0.0, 0.0))
+
+        pose_enu_frame = pose_enu_standard.enu_to_ned_standard().ned_to_enu_frame()
+        pose_enu_frame_method2 = pose_enu_standard.mult(Pose.T_STANDARD_FRAME)
+        self.assertPoseAlmostEqual(pose_enu_frame, pose_enu_frame_method2)
+
+        pose_enu_standard = pose_enu_frame.enu_to_ned_frame().ned_to_enu_standard()
+        pose_enu_standard_method2 = pose_enu_frame.mult(Pose.T_FRAME_STANDARD)
+        self.assertPoseAlmostEqual(pose_enu_standard, pose_enu_standard_method2)
 
 if __name__ == '__main__':
     unittest.main()

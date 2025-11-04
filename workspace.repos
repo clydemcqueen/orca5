@@ -9,3 +9,13 @@ repositories:
     type: git
     url: https://github.com/clydemcqueen/orb_slam3_ros.git
     version: ce6ec19
+
+  micro_ros_agent:
+    type: git
+    url: https://github.com/micro-ROS/micro-ROS-Agent.git
+    version: 52abdf5
+
+  ardupilot:
+    type: git
+    url: https://github.com/clydemcqueen/ardupilot.git
+    version: 9eb5dc4
