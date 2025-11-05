@@ -1,0 +1,4 @@
+# For VPE (VISION_POSITION_ESTIMATE)
+
+# Use the SLAM yaw if slam_tracking=True
+EK3_SRC1_YAW 6              # External vision

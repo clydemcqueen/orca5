@@ -42,6 +42,12 @@ def generate_launch_description():
             description='MAVLink device address',
         ),
 
+        DeclareLaunchArgument(
+            'use_vpe',
+            default_value='True',
+            description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
+        ),
+
         Node(
             package='orb_slam3_ros',
             executable='orb_slam3_ros_mono',
@@ -61,6 +67,7 @@ def generate_launch_description():
             parameters=[{
                 'use_sim_time': LaunchConfiguration('use_sim_time'),
                 'mav_device': LaunchConfiguration('mav_device'),
+                'use_vpe': LaunchConfiguration('use_vpe'),
             }],
             condition=IfCondition(LaunchConfiguration('base')),
         ),

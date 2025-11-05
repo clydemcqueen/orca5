@@ -18,7 +18,11 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     orca_bringup_dir = get_package_share_directory('orca_bringup')
-    sub_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub.parm')
+    sub_common_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub_common.parm')
+    sub_vpd_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub_vpd.parm')
+    sub_vpe_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub_vpe.parm')
+    sub_vpd_parm_files = f'{sub_common_parm_file},{sub_vpd_parm_file}'
+    sub_vpe_parm_files = f'{sub_common_parm_file},{sub_vpe_parm_file}'
 
     nodes = [
         DeclareLaunchArgument(
@@ -49,6 +53,12 @@ def generate_launch_description():
             'rviz',
             default_value='True',
             description='Launch rviz?',
+        ),
+
+        DeclareLaunchArgument(
+            'use_vpe',
+            default_value='True',
+            description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
         ),
 
         # Launch Gazebo
@@ -150,6 +160,7 @@ def generate_launch_description():
                 'base': LaunchConfiguration('base'),
                 'orb': LaunchConfiguration('orb'),
                 'mav_device': 'udpin:0.0.0.0:14551',
+                'use_vpe': LaunchConfiguration('use_vpe'),
             }.items(),
         ),
 
@@ -157,8 +168,8 @@ def generate_launch_description():
         # vectored_6dof as the model, AND the default params must set magic ArduSub parameter FRAME_CONFIG to 2.0.
         # Yaw is provided by Gazebo, so the start yaw value is ignored.
         ExecuteProcess(
-            cmd=['ardusub', '-S', '-w', '-M', 'JSON', '--defaults', sub_parm_file,
-                 '-I0', '--home', '47.6302,-122.3982391,-0.1,0'],
+            cmd=['ardusub', '-S', '--wipe', '-M', 'JSON', '-I0', '--home', '47.6302,-122.3982391,-0.1,0',
+                 '--defaults', sub_vpe_parm_files if LaunchConfiguration('use_vpe') else sub_vpd_parm_files],
             output='screen',
             condition=IfCondition(LaunchConfiguration('ardusub')),
         ),

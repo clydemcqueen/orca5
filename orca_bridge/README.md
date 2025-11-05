@@ -1,6 +1,6 @@
 # orca_bridge
 
-The main event is the [slam_bridge.py](scripts/slam_bridge.py) node, which maintains MAVLink connection to ArduSub
+The main event is the [MonoSlamBridge](scripts/slam_bridge.py) node, which maintains MAVLink connection to ArduSub
 and shuttles information between ROS2 and MAVLink.
 
 ## Theory of Operation (Life of a Pose)
@@ -34,7 +34,7 @@ orb_slam3_ros publishes the status, the pose and a cloud of tracked points in `/
 The tracked points are only those points that appear in the most recent camera image.
 Since we are using Monocular mode the pose is only valid up to a scale factor.
 
-The SlamBridge node subscribes to `/slam_status`, listens for `RANGEFINDER` messages and does a few things:
+The MonoSlamBridge node subscribes to `/slam_status`, listens for `RANGEFINDER` messages and does a few things:
 * compute a _visual_ rangefinder reading from the cloud of tracked points
 * scale = sonar_rf / visual_rf
 * delta_pose = previous_pose.inverse * current_pose
@@ -43,7 +43,7 @@ The SlamBridge node subscribes to `/slam_status`, listens for `RANGEFINDER` mess
 ArduSub fuses the barometer, IMU and vision measurements into an estimated pose. 
 This is sent as `LOCAL_POSITION_NED` (x, y, z) and `ATTITUDE` (roll, pitch, yaw) MAVLink messages.
 
-SlamBridge listens for `LOCAL_POSITION_NED` and `ATTITUDE` messages and publishes various ROS2 messages and transforms.
+MonoSlamBridge listens for `LOCAL_POSITION_NED` and `ATTITUDE` messages and publishes various ROS2 messages and transforms.
 
 ArduSub calculates servo commands to achieve the desired pose depending on the mode (ALT_HOLD, POSHOLD, AUTO).
 These are sent to the ArduPilot Gazebo plugin via UDP.

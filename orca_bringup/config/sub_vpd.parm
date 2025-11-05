@@ -1,0 +1,4 @@
+# For VPD (VISION_POSITION_DELTA)
+
+# Use the compass if slam_tracking=True
+EK3_SRC1_YAW 1              # Compass

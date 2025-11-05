@@ -1,4 +1,6 @@
-# Copied from ardupilot/Tools/autotest/default_params/sub.parm as of b7ace6c6
+# Parameters for sub SITL, common across the vpd and vpe cases
+
+# These are copied from ardupilot/Tools/autotest/default_params/sub.parm as of b7ace6c6
 ARSPD_PIN 1
 ARSPD_BUS 2
 BATT_MONITOR     4
@@ -90,21 +92,7 @@ PSC_JERK_Z 8
 LOG_BITMASK      180222
 SIM_BARO_RND     0.02
 
-# EK3_SRC1 uses external vision rather than GPS
-GPS1_TYPE 0                 # Disable simulated GPS
-VISO_TYPE 1                 # Enable external vision
-EK3_SRC1_POSXY 6            # POSXY from external vision
-EK3_SRC1_VELXY 6            # VELXY from external vision
-
-# We rely on these defaults
-# EK3_SRC2_POSXY 0          # No sensor for POSXY
-# EK3_SRC2_VELXY 0          # No sensor for VELXY
-
-ORIGIN_LAT 47.6302          # Default origin
-ORIGIN_LON -122.3982391     # Default origin
-FS_PILOT_INPUT 0            # Suppress "Lost manual control" messages
-
-# Simulated down-facing sonar
+# Add a simulated down-facing sonar
 RNGFND1_TYPE 100        # Type = SITL
 RNGFND1_FUNCTION 0      # Function = LINEAR
 RNGFND1_MIN_CM 20       # Min distance is 0.5m
@@ -114,12 +102,18 @@ RNGFND1_POS_X -0.18
 RNGFND1_POS_Y 0.0
 RNGFND1_POS_Z -0.095
 
+# Suppress "Lost manual control" messages
+FS_PILOT_INPUT 0
+
+# Set a default origin, the first "arm throttle" will apply this
+ORIGIN_LAT 47.6302          # Default origin
+ORIGIN_LON -122.3982391     # Default origin
+
 # Default for RC_PROTOCOLS is 0 (none); set to 1 (all)
 # This is required to support mavproxy `rc` commands with the `--sitl ...` option
 # See https://github.com/ArduPilot/ardupilot/pull/29742
 RC_PROTOCOLS 1
 
-# Tune mission parameters:
 # Slow down
 WPNAV_SPEED 30
 WPNAV_SPEED_UP 30
@@ -136,3 +130,20 @@ ATC_ACCEL_Y_MAX 55000
 ATC_RAT_YAW_P 0.025
 ATC_RAT_YAW_I 0
 ATC_RAT_YAW_D 0
+
+# Disable GPS, enable external vision
+GPS1_TYPE 0                 # Disable simulated GPS
+VISO_TYPE 1                 # Enable external vision
+
+# EK3_SRC1 parameters are used when slam_tracking=True:
+EK3_SRC1_POSXY 6            # External vision
+EK3_SRC1_VELXY 6            # External vision
+# EK3_SRC1_YAW ?            # Defer to sub_vpd.parm and sub_vpe.parm
+
+# EK3_SRC2 parameters are used when slam_tracking=False:
+EK3_SRC2_POSXY 0            # No sensor
+EK3_SRC2_VELXY 0            # No sensor
+EK3_SRC2_YAW 1              # Compass
+
+# Do not enable "use all velocities"
+EK3_SRC_OPTIONS 0

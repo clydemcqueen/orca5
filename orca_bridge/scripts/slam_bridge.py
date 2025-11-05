@@ -54,6 +54,9 @@ class MonoSlamBridge(rclpy.node.Node):
     def __init__(self):
         super().__init__('slam_bridge')
 
+        # Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?
+        self.use_vpe = self.declare_parameter('use_vpe', False).get_parameter_value().bool_value
+
         # Static transform slam -> world
         self.t_slam_world = geometry.Pose()
         self.t_slam_world.set_euler(math.pi, 0, 0)
@@ -203,29 +206,49 @@ class MonoSlamBridge(rclpy.node.Node):
         # Find the pose of the base link (the ROV) in the SLAM map frame
         t_slam_base = t_slam_link.mult(self.t_link_base)
 
-        #----------
-        # Send a VISION_POSITION_DELTA (VPD) to ArduSub
-        #----------
-
         # Calculate the delta from the previous pose
         delta = geometry.Pose.delta_pose(self.maps.current_map.t_slam_base, t_slam_base)
 
-        # Convert FLU (forward, left, up) to FRD (forward, right, down)
-        delta_p_flu = delta.get_position()
-        delta_e_flu = delta.get_euler()
-        delta_p_frd = (delta_p_flu[0], -delta_p_flu[1], -delta_p_flu[2])
-        delta_e_frd = (delta_e_flu[0], -delta_e_flu[1], -delta_e_flu[2])
-
-        self.conn.mav.vision_position_delta_send(
-            0,  # time_usec (not used)
-            1000000 // CAMERA_HZ,  # delta usec
-            delta_e_frd,
-            delta_p_frd,
-            0  # confidence (not used)
-        )
-
-        # Save the current pose
+        # Save the current slam->base transform
         self.maps.current_map.update_pose(t_slam_base)
+
+        # Find the pose of the base link (the ROV) in the map frame
+        t_map_base = self.maps.current_map.t_map_slam.mult(t_slam_base)
+
+        #----------
+        # Send a VISION_POSITION_DELTA (VPD) or VISION_POSITION_ESTIMATE (VPE) message to ArduSub
+        #----------
+
+        if self.use_vpe:
+
+            t_map_base_ned = t_map_base.enu_to_ned_standard()
+            e_frd = t_map_base_ned.get_euler()
+
+            self.conn.mav.vision_position_estimate_send(
+                0,  # time_usec (not used)
+                t_map_base_ned.p[0],
+                t_map_base_ned.p[1],
+                t_map_base_ned.p[2],
+                e_frd[0],
+                e_frd[1],
+                e_frd[2]
+            )
+
+        else:
+
+            # Convert FLU (forward, left, up) to FRD (forward, right, down)
+            delta_p_flu = delta.get_position()
+            delta_e_flu = delta.get_euler()
+            delta_p_frd = (delta_p_flu[0], -delta_p_flu[1], -delta_p_flu[2])
+            delta_e_frd = (delta_e_flu[0], -delta_e_flu[1], -delta_e_flu[2])
+
+            self.conn.mav.vision_position_delta_send(
+                0,  # time_usec (not used)
+                1000000 // CAMERA_HZ,  # delta usec
+                delta_e_frd,
+                delta_p_frd,
+                0  # confidence (not used)
+            )
 
         # Publish the map -> slam transform
         tf_msg = geometry_msgs.msg.TransformStamped()
@@ -236,11 +259,10 @@ class MonoSlamBridge(rclpy.node.Node):
         self.tf_broadcaster.sendTransform(tf_msg)
 
         # Publish the ROV pose as determined by ORB_SLAM3
-        t_map_base_from_slam = self.maps.current_map.t_map_slam.mult(t_slam_base)
         slam_pose_stamped_msg = geometry_msgs.msg.PoseStamped()
         slam_pose_stamped_msg.header.stamp = msg.header.stamp
         slam_pose_stamped_msg.header.frame_id = 'map'
-        slam_pose_stamped_msg.pose = t_map_base_from_slam.to_pose_msg()
+        slam_pose_stamped_msg.pose = t_map_base.to_pose_msg()
         self.slam_pose_pub.publish(slam_pose_stamped_msg)
 
         # Publish the SLAM delta

@@ -1,8 +1,11 @@
 """
 Unit tests for the Pose class coordinate conversion methods.
 
-colcon test
-colcon test-result --all
+colcon test --packages-select orca_bridge
+colcon test-result --all --verbose
+
+To debug a specific test:
+colcon --log-level DEBUG test --packages-select orca_bridge --event-handlers=console_direct+ --pytest-args -k test_standard_frame_static_transforms -s
 """
 
 import math
