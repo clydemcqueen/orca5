@@ -33,9 +33,9 @@ def generate_launch_description():
         ),
 
         DeclareLaunchArgument(
-            'base',
+            'bridge',
             default_value='True',
-            description='Launch base controller?',
+            description='Launch SLAM bridge?',
         ),
 
         DeclareLaunchArgument(
@@ -121,7 +121,7 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(os.path.join(orca_bringup_dir, 'launch', 'bringup.launch.py')),
             launch_arguments={
                 'use_sim_time': 'False',
-                'base': LaunchConfiguration('base'),
+                'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
                 'mav_device': 'udpin:0.0.0.0:14550',
             }.items(),
