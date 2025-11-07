@@ -104,7 +104,7 @@ class SlamMap:
         self.t_map_slam = t_map_base
 
         # The latest pose of the base link in the slam frame
-        self.t_slam_base = geometry.Pose()
+        self.t_slam_base = None
 
     def update_scale(self, sonar_rf: float, slam_rf: float):
         self.sonar_rf = float(sonar_rf)
