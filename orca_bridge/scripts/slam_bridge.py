@@ -24,9 +24,6 @@ import slam
 import sub
 
 CAMERA_HZ = 10
-MAX_XY_DIST = 0.15
-WARN_Z_DIST = 0.1
-WARN_YAW_DIST = 0.1
 
 
 def stamp_to_s(stamp: builtin_interfaces.msg.Time) -> float:
@@ -56,6 +53,10 @@ class MonoSlamBridge(rclpy.node.Node):
 
         # Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?
         self.use_vpe = self.declare_parameter('use_vpe', False).get_parameter_value().bool_value
+
+        # Max delta for position and rotation to be considered an outlier
+        self.max_delta_pos = self.declare_parameter('max_delta_pos', 0.5).get_parameter_value().double_value
+        self.max_delta_rot = self.declare_parameter('max_delta_rot', math.pi / 6).get_parameter_value().double_value
 
         # Static transform slam -> world
         self.t_slam_world = geometry.Pose()
@@ -134,6 +135,35 @@ class MonoSlamBridge(rclpy.node.Node):
             1, 1, 0, apm.MAV_CMD_SET_EKF_SOURCE_SET, 0, 0,
             1 if slam_tracking else 2, 0, 0, 0, 0, 0, 0))
 
+    def is_outlier(self, delta_p, delta_e) -> bool:
+        """Return true if the delta is too great."""
+
+        # Calculate magnitude of position delta
+        delta_pos = math.sqrt(delta_p[0] ** 2 + delta_p[1] ** 2 + delta_p[2] ** 2)
+
+        # Ensure angles are within (-pi, pi] for comparison
+        delta_roll = math.fmod(delta_e[0] + math.pi, 2 * math.pi) - math.pi
+        delta_pitch = math.fmod(delta_e[1] + math.pi, 2 * math.pi) - math.pi
+        delta_yaw = math.fmod(delta_e[2] + math.pi, 2 * math.pi) - math.pi
+
+        if delta_pos > self.max_delta_pos:
+            self.get_logger().warn(f'Outlier: pos_delta={delta_pos:.3f}m (max {self.max_delta_pos:.3f}m)')
+            return True
+
+        if abs(delta_roll) > self.max_delta_rot:
+            self.get_logger().warn(f'Outlier: roll_delta={math.degrees(delta_roll):.3f}deg (max {math.degrees(self.max_delta_rot):.3f}deg)')
+            return True
+
+        if abs(delta_pitch) > self.max_delta_rot:
+            self.get_logger().warn(f'Outlier: pitch_delta={math.degrees(delta_pitch):.3f}deg (max {math.degrees(self.max_delta_rot):.3f}deg)')
+            return True
+
+        if abs(delta_yaw) > self.max_delta_rot:
+            self.get_logger().warn(f'Outlier: yaw_delta={math.degrees(delta_yaw):.3f}deg (max {math.degrees(self.max_delta_rot):.3f}deg)')
+            return True
+
+        return False
+
     def slam_callback(self, msg: orb_slam3_msgs.msg.SlamStatus):
 
         #----------
@@ -207,7 +237,16 @@ class MonoSlamBridge(rclpy.node.Node):
         t_slam_base = t_slam_link.mult(self.t_link_base)
 
         # Calculate the delta from the previous pose
-        delta = geometry.Pose.delta_pose(self.maps.current_map.t_slam_base, t_slam_base)
+        if self.maps.current_map.t_slam_base is None:
+            delta = geometry.Pose()
+        else:
+            delta = geometry.Pose.delta_pose(self.maps.current_map.t_slam_base, t_slam_base)
+
+        delta_p = delta.get_position()
+        delta_e = delta.get_euler()
+        
+        # Detect outliers
+        self.is_outlier(delta_p, delta_e)
 
         # Save the current slam->base transform
         self.maps.current_map.update_pose(t_slam_base)
@@ -237,10 +276,8 @@ class MonoSlamBridge(rclpy.node.Node):
         else:
 
             # Convert FLU (forward, left, up) to FRD (forward, right, down)
-            delta_p_flu = delta.get_position()
-            delta_e_flu = delta.get_euler()
-            delta_p_frd = (delta_p_flu[0], -delta_p_flu[1], -delta_p_flu[2])
-            delta_e_frd = (delta_e_flu[0], -delta_e_flu[1], -delta_e_flu[2])
+            delta_p_frd = (delta_p[0], -delta_p[1], -delta_p[2])
+            delta_e_frd = (delta_e[0], -delta_e[1], -delta_e[2])
 
             self.conn.mav.vision_position_delta_send(
                 0,  # time_usec (not used)
