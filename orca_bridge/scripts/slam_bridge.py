@@ -92,10 +92,10 @@ class MonoSlamBridge(rclpy.node.Node):
         self.slam_sub = self.create_subscription(orb_slam3_msgs.msg.SlamStatus, 'slam_status', self.slam_callback, 10)
 
         # Publishers
+        self.bridge_status_pub = self.create_publisher(orca_msgs.msg.BridgeStatus, 'bridge_status', 10)
         self.ekf_pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'ekf_pose', 10)
         self.ekf_status_pub = self.create_publisher(orca_msgs.msg.FilterStatus, 'ekf_status', 10)
         self.scaled_map_pub = self.create_publisher(sensor_msgs.msg.PointCloud2, 'map_points/scaled', 10)
-        self.rf_scale_pub = self.create_publisher(geometry_msgs.msg.PointStamped, 'rf_scale', 10)
         self.slam_delta_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'slam_delta', 10)
         self.slam_pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'slam_pose', 10)
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
@@ -164,11 +164,24 @@ class MonoSlamBridge(rclpy.node.Node):
 
         return False
 
+    def publish_bridge_status(self, stamp, flags):
+        bridge_status_msg = orca_msgs.msg.BridgeStatus()
+        bridge_status_msg.header.stamp = stamp
+        bridge_status_msg.header.frame_id = 'map'
+        bridge_status_msg.flags = flags
+        if self.maps.current_map is not None:
+            bridge_status_msg.sonar_rf = self.maps.current_map.sonar_rf
+            bridge_status_msg.slam_rf = self.maps.current_map.slam_rf
+            bridge_status_msg.scale = self.maps.current_map.scale
+        self.bridge_status_pub.publish(bridge_status_msg)
+
     def slam_callback(self, msg: orb_slam3_msgs.msg.SlamStatus):
 
         #----------
         # Wait for everything to warm up
         #----------
+
+        flags = 0
 
         # Wait for static transform to be published
         if self.t_link_base is None:
@@ -179,17 +192,17 @@ class MonoSlamBridge(rclpy.node.Node):
                 self.t_link_base = geometry.Pose.from_transform_msg(t_link_base.transform)
             else:
                 self.get_logger().warn('Cannot get tf from base_link to camera_link, dropping slam message', throttle_duration_sec=1.0)
-                return
+                flags |= orca_msgs.msg.BridgeStatus.WAIT_TRANSFORMS
 
         # Wait for sonar rangefinder readings
         if self.sub.sonar_rf_distance is None:
             self.get_logger().warn('Sonar rangefinder not available, dropping slam message', throttle_duration_sec=1.0)
-            return
+            flags |= orca_msgs.msg.BridgeStatus.WAIT_SONAR_RF
 
         # Wait for the EKF to generate a good pose
         if self.sub.ekf_other():
             self.get_logger().warn('EKF not healthy, dropping slam message', throttle_duration_sec=1.0)
-            return
+            flags |= orca_msgs.msg.BridgeStatus.WAIT_EKF
 
         #----------
         # Update SLAM state
@@ -205,6 +218,11 @@ class MonoSlamBridge(rclpy.node.Node):
                 # position, but after ~6s it will time out and switch to const_pos mode. It appears that we can speed
                 # this process up a bit by changing the EKF source set to remove the POSXY and VELXY inputs.
                 self.set_ekf_sources(slam_tracking=False)
+            flags |= orca_msgs.msg.BridgeStatus.WAIT_SLAM
+
+        if flags:
+            # Nothing to do
+            self.publish_bridge_status(msg.header.stamp, flags)
             return
 
         if not self.tracking:
@@ -246,7 +264,8 @@ class MonoSlamBridge(rclpy.node.Node):
         delta_e = delta.get_euler()
         
         # Detect outliers
-        self.is_outlier(delta_p, delta_e)
+        if self.is_outlier(delta_p, delta_e):
+            flags |= orca_msgs.msg.BridgeStatus.OK_OUTLIER
 
         # Save the current slam->base transform
         self.maps.current_map.update_pose(t_slam_base)
@@ -309,14 +328,8 @@ class MonoSlamBridge(rclpy.node.Node):
         slam_delta_stamped_msg.pose = delta.to_pose_msg()
         self.slam_delta_pub.publish(slam_delta_stamped_msg)
 
-        # Publish the RF and scale values
-        point_stamped_msg = geometry_msgs.msg.PointStamped()
-        point_stamped_msg.header.stamp = msg.header.stamp
-        point_stamped_msg.header.frame_id = 'base_link'
-        point_stamped_msg.point.x = self.maps.current_map.sonar_rf   # Most recent sonar rf distance
-        point_stamped_msg.point.y = self.maps.current_map.slam_rf    # Current visual rf distance
-        point_stamped_msg.point.z = self.maps.current_map.scale      # The SLAM scale
-        self.rf_scale_pub.publish(point_stamped_msg)
+        # Publish a status message
+        self.publish_bridge_status(msg.header.stamp, flags)
 
     def map_callback(self, msg: sensor_msgs.msg.PointCloud2):
         """Scale the map and republish it."""

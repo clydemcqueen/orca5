@@ -123,12 +123,12 @@ def generate_launch_description():
             cmd=[
                 'ros2', 'bag', 'record',
                 '--include-hidden-topics',
+                '/bridge_status',
                 '/camera_info',
                 '/camera_pose',
                 '/ekf_pose',
                 '/ekf_status',
                 '/model/orca5/odometry',
-                '/rf_scale',
                 '/rosout',
                 '/slam_delta',
                 '/slam_pose',
