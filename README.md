@@ -59,14 +59,9 @@ ArduSub will initialize and start sending MAVLink messages to the SLAM bridge no
 In response, the bridge node will start sending visual odometry messages to ArduSub.
 Wait for these messages from mavproxy:
 ~~~
-AP: EKF3 IMU1 fusing odometry
-AP: EKF3 IMU0 fusing odometry
-AP: EKF3 IMU1 started relative aiding
-AP: EKF3 IMU0 started relative aiding
+AP: EKF3 IMU1 is using external nav data
+AP: EKF3 IMU0 is using external nav data
 ~~~
-
-Note: it may take ~30 seconds for the ArduSub EKF to learn the gyro bias before it will accept
-the visual odometry messages.
 
 Mavproxy is interactive, so we can execute commands. Arm the motors:
 ~~~
