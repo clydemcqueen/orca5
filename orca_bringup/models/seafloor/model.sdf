@@ -22,7 +22,7 @@
             <uri>model://seafloor/heightmap.png</uri>
             <size>20 20 1</size>
             <!-- The pos element must match the seafloor pose in pnw.world. -->
-            <pos>0 0 -10</pos>
+            <pos>0 0 -4</pos>
           </heightmap>
         </geometry>
         <material>
