@@ -1,0 +1,12 @@
+# Repositories required by the hw target
+repositories:
+
+  clydemcqueen/gscam2:
+    type: git
+    url: https://github.com/clydemcqueen/gscam2
+    version: main
+
+  ptrmu/ros2_shared:
+    type: git
+    url: https://github.com/ptrmu/ros2_shared
+    version: master

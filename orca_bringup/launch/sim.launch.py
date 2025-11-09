@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Launch orca5 in Gazebo.
+Launch a simulation using ArduSub SITL and Gazebo.
 """
 
 import math
