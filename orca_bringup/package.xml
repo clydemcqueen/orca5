@@ -7,12 +7,14 @@
   <maintainer email="clyde@mcqueen.net">Clyde McQueen</maintainer>
   <license>MIT</license>
 
-  <depend>ardupilot_gazebo</depend>
   <depend>nav_msgs</depend>
   <depend>orb_slam3_ros</depend>
   <depend>orca_bridge</depend>
-  <depend>ros_gz_bridge</depend>
-  <depend>ros_gz_image</depend>
+
+  <!-- Only required for simulation -->
+  <!-- <depend>ardupilot_gazebo</depend> -->
+  <!-- <depend>ros_gz_bridge</depend> -->
+  <!-- <depend>ros_gz_image</depend> -->
 
   <export>
     <build_type>ament_cmake</build_type>

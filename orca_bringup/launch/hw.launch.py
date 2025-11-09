@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Launch orca5 on the bench.
-
-Hardware:
--- Pi running BlueOS and ArduSub SITL
--- A camera providing JPEG images
--- No rangefinder
+Launch orca5 on a topside computer and connect to a BlueROV2.
 """
 
 import math
@@ -23,7 +18,6 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     orca_bringup_dir = get_package_share_directory('orca_bringup')
-    sub_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub.parm')
 
     nodes = [
         DeclareLaunchArgument(
@@ -50,6 +44,12 @@ def generate_launch_description():
             description='Launch rviz?',
         ),
 
+        DeclareLaunchArgument(
+            'use_vpe',
+            default_value='True',
+            description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
+        ),
+
         # Modify this for your camera
         Node(
             package='gscam2',
@@ -60,11 +60,13 @@ def generate_launch_description():
                 'camera_info_url': 'file://' + os.path.join(orca_bringup_dir, 'config', 'sim_camera.yaml'),
                 'frame_id': 'camera_sensor',
                 'gscam_config': 'v4l2src device=/dev/video0 ! image/jpeg,width=1280,height=720,framerate=30/1 ! jpegdec ! videoconvert',
+                'use_sim_time': False,
             }],
+            condition=IfCondition(LaunchConfiguration('orb')),
         ),
 
         # Publish the static base_link -> camera_link transform.
-        # This must match the transform in orca5/model.sdf (see camera_* vars in generate_model.py)
+        # Modify this for your vehicle
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
@@ -112,7 +114,7 @@ def generate_launch_description():
             parameters=[{
                 'use_sim_time': False,
             }],
-            arguments=['-d', os.path.join(orca_bringup_dir, 'rviz', 'sim.rviz')],
+            arguments=['-d', os.path.join(orca_bringup_dir, 'rviz', 'hw.rviz')],
             condition=IfCondition(LaunchConfiguration('rviz')),
         ),
 
@@ -124,6 +126,7 @@ def generate_launch_description():
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
                 'mav_device': 'udpin:0.0.0.0:14550',
+                'use_vpe': LaunchConfiguration('use_vpe'),
             }.items(),
         ),
     ]

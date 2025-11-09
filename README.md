@@ -21,8 +21,8 @@ See the [Dockerfile](docker/Dockerfile) for details.
 Build a docker image, then run it:
 ~~~
 cd docker
-./build.sh
-./run.sh
+./build.sh sim
+./run.sh sim nvidia
 ~~~
 
 This is a dev container, so the orca5 directory will be mounted inside the container.
@@ -46,7 +46,7 @@ ORB_SLAM3 should initialize and start tracking the seafloor.
 
 Open a second terminal into the container:
 ~~~
-docker exec -it orca5 /bin/bash
+docker exec -it orca5_sim /bin/bash
 ~~~
 
 Launch mavproxy as the GCS:
