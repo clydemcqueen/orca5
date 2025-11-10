@@ -59,7 +59,7 @@ def generate_launch_description():
                 'camera_name': 'sim_camera',
                 'camera_info_url': 'file://' + os.path.join(orca_bringup_dir, 'config', 'sim_camera.yaml'),
                 'frame_id': 'camera_sensor',
-                'gscam_config': 'v4l2src device=/dev/video0 ! image/jpeg,width=1280,height=720,framerate=30/1 ! jpegdec ! videoconvert',
+                'gscam_config': 'udpsrc port=5600 ! application/x-rtp ! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert',
                 'use_sim_time': False,
             }],
             condition=IfCondition(LaunchConfiguration('orb')),

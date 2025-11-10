@@ -102,7 +102,7 @@ VOLUME /home/$USERNAME/colcon_ws/src/orca5
 
 FROM base AS sim
 
-# Switch to root to install a bunch of stuff
+# Switch to root to install stuff
 USER root
 
 # Install Gazebo Harmonic for use with ROS2 Jazzy
@@ -110,7 +110,7 @@ RUN apt-get update \
   && apt-get -y --quiet --no-install-recommends install ros-jazzy-ros-gz \
   && rm -rf /var/lib/apt/lists/*
 
-# Install some ardupilot and ardupilot_gazebo prereqs
+# Install ardupilot and ardupilot_gazebo prereqs
 RUN apt-get update \
   && apt-get -y --quiet --no-install-recommends install \
     python3-pip \
@@ -187,6 +187,25 @@ ENTRYPOINT ["/bin/bash"]
 ###############################
 
 FROM base AS hw
+
+# Switch to root to install stuff
+USER root
+
+# Install gscam2 prereqs
+RUN apt-get update \
+  && apt-get -y --quiet --no-install-recommends install \
+    libgstreamer1.0-0 \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    gstreamer1.0-tools \
+    gstreamer1.0-x \
+  && rm -rf /var/lib/apt/lists/*
+
+# Switch back to new user
+USER $USERNAME
 
 # Get hw repos
 WORKDIR /home/$USERNAME/colcon_ws/src
