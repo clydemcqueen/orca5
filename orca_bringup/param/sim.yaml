@@ -56,6 +56,13 @@ ORBextractor.iniThFAST: 20
 ORBextractor.minThFAST: 7
 
 #--------------------------------------------------------------------------------------------
+# Tracking behavior
+#--------------------------------------------------------------------------------------------
+
+# How long until we create a new map, in seconds; must be a real number
+System.timeRecentlyLost: 10000000.0
+
+#--------------------------------------------------------------------------------------------
 # Viewer Parameters (these are no longer used, but the code still requires them)
 #---------------------------------------------------------------------------------------------
 Viewer.KeyFrameSize: 0.05
