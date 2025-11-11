@@ -60,6 +60,7 @@ def generate_launch_description():
                 'camera_info_url': 'file://' + os.path.join(orca_bringup_dir, 'config', 'sim_camera.yaml'),
                 'frame_id': 'camera_sensor',
                 'gscam_config': 'udpsrc port=5600 ! application/x-rtp ! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert',
+                'skip': 2,  # Reduce 30 fps to 10 fps
                 'use_sim_time': False,
             }],
             condition=IfCondition(LaunchConfiguration('orb')),

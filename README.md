@@ -12,8 +12,6 @@ visual odometry to a [BlueRobotics BlueROV2](https://www.bluerobotics.com) runni
 * [ardupilot_gazebo](https://github.com/ArduPilot/ardupilot_gazebo/tree/ros2)
 * [orb_slam3_ros](https://github.com/clydemcqueen/orb_slam3_ros); this includes ORB_SLAM3
 
-See [orca_bridge](orca_bridge/README.md) for more details.
-
 See the [Dockerfile](docker/Dockerfile) for details.
 
 ## Build and Run

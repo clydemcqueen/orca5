@@ -23,8 +23,6 @@ import geometry
 import slam
 import sub
 
-CAMERA_HZ = 10
-
 
 def stamp_to_s(stamp: builtin_interfaces.msg.Time) -> float:
     """Convert builtin_interfaces.msg.Time to seconds since the epoch"""
@@ -50,6 +48,9 @@ class MonoSlamBridge(rclpy.node.Node):
 
     def __init__(self):
         super().__init__('slam_bridge')
+
+        # Expected frame rate
+        self.frame_rate = self.declare_parameter('frame_rate', 10).get_parameter_value().integer_value
 
         # Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?
         self.use_vpe = self.declare_parameter('use_vpe', False).get_parameter_value().bool_value
@@ -300,7 +301,7 @@ class MonoSlamBridge(rclpy.node.Node):
 
             self.conn.mav.vision_position_delta_send(
                 0,  # time_usec (not used)
-                1000000 // CAMERA_HZ,  # delta usec
+                1000000 // self.frame_rate,  # delta usec
                 delta_e_frd,
                 delta_p_frd,
                 0  # confidence (not used)
