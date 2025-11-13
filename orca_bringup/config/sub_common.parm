@@ -147,3 +147,10 @@ EK3_SRC2_YAW 1              # Compass
 
 # Do not enable "use all velocities"
 EK3_SRC_OPTIONS 0
+
+# Enable Lua scripting and assign joystick buttons
+SCR_ENABLE 1
+BTN0_SFUNCTION 108  # shift A
+BTN1_SFUNCTION 109  # shift B
+BTN2_SFUNCTION 110  # shift X
+BTN3_SFUNCTION 111  # shift Y

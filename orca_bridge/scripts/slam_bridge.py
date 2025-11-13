@@ -17,6 +17,7 @@ import rclpy.node
 import rclpy.serialization
 import rclpy.time
 import sensor_msgs.msg
+import std_srvs.srv
 import tf2_ros
 
 import geometry
@@ -100,6 +101,9 @@ class MonoSlamBridge(rclpy.node.Node):
         self.slam_delta_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'slam_delta', 10)
         self.slam_pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'slam_pose', 10)
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+
+        # Service clients
+        self.reset_client = self.create_client(std_srvs.srv.Empty, 'reset_slam')
 
         # Manage state on a 10 Hz timer
         self.timer = self.create_timer(0.1, self.timer_callback)
@@ -350,6 +354,13 @@ class MonoSlamBridge(rclpy.node.Node):
 
         # Update ArduSub state
         self.sub.update(self.conn, now_s, self.get_logger())
+
+        # Reset SLAM if requested
+        if self.sub.button1:
+            self.get_logger().info('Resetting SLAM')
+            reset_request = std_srvs.srv.Empty.Request()
+            self.reset_client.call_async(reset_request)
+            self.sub.button1 = False
 
         # Publish the EKF status
         ekf_status_msg = orca_msgs.msg.FilterStatus()
