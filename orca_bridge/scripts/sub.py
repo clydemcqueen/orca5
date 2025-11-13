@@ -16,6 +16,7 @@ class Sub:
         'GLOBAL_POSITION_INT',  # Altitude above home, use if filter_status == ALT_ONLY
         'LOCAL_POSITION_NED',  # Position, use if filter_status == HORIZ_REL
         'RANGEFINDER',  # Sonar rangefinder
+        'STATUSTEXT',  # Messages
     ]
 
     def __init__(self):
@@ -24,6 +25,7 @@ class Sub:
         self.ekf_status_time: float | None = None
         self.t_map_base_ned = geometry.Pose()
         self.sonar_rf_distance = None
+        self.button1 = False
 
     def ekf_const_pos(self):
         return self.ekf_status_report.flags & apm.EKF_CONST_POS_MODE == apm.EKF_CONST_POS_MODE
@@ -63,6 +65,9 @@ class Sub:
             elif msg_type == 'RANGEFINDER':
                 # Hack to support testing
                 self.sonar_rf_distance = msg.distance if msg.distance > 0.0 else 1.0
+            elif msg_type == 'STATUSTEXT':
+                if msg.text == 'script button 1':
+                    self.button1 = True
 
         if self.ekf_status_time is not None and now_s - self.ekf_status_time > Sub.FILTER_TIMEOUT_S:
             logger.warn('EKF timeout')
