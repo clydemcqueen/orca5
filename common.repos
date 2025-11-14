@@ -4,4 +4,4 @@ repositories:
   orb_slam3_ros:
     type: git
     url: https://github.com/clydemcqueen/orb_slam3_ros.git
-    version: 72fd550
+    version: cda4ae6

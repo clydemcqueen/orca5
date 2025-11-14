@@ -19,6 +19,13 @@ from launch_ros.actions import Node
 def generate_launch_description():
     orca_bringup_dir = get_package_share_directory('orca_bringup')
 
+    # Modify this for your ROV
+    mav_device = 'udpin:0.0.0.0:14550'
+    camera_name = 'sim_camera'
+    camera_info_url = 'file://' + os.path.join(orca_bringup_dir, 'config', 'sim_camera.yaml')
+    gscam_config = 'udpsrc port=5600 ! application/x-rtp ! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
+    skip = 2  # Reduce 30 fps to 10 fps
+
     nodes = [
         DeclareLaunchArgument(
             'bag',
@@ -50,17 +57,16 @@ def generate_launch_description():
             description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
         ),
 
-        # Modify this for your camera
         Node(
             package='gscam2',
             executable='gscam_main',
             output='screen',
             parameters=[{
-                'camera_name': 'sim_camera',
-                'camera_info_url': 'file://' + os.path.join(orca_bringup_dir, 'config', 'sim_camera.yaml'),
+                'camera_name': camera_name,
+                'camera_info_url': camera_info_url,
                 'frame_id': 'camera_sensor',
-                'gscam_config': 'udpsrc port=5600 ! application/x-rtp ! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert',
-                'skip': 2,  # Reduce 30 fps to 10 fps
+                'gscam_config': gscam_config,
+                'skip': skip,
                 'use_sim_time': False,
             }],
             condition=IfCondition(LaunchConfiguration('orb')),
@@ -126,7 +132,7 @@ def generate_launch_description():
                 'use_sim_time': 'False',
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
-                'mav_device': 'udpin:0.0.0.0:14550',
+                'mav_device': mav_device,
                 'use_vpe': LaunchConfiguration('use_vpe'),
             }.items(),
         ),
