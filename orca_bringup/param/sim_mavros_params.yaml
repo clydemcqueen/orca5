@@ -1,0 +1,65 @@
+# Connect to the FCU (ArduSub) and pass messages to/from the GCS (QGroundControl, mavproxy)
+#
+# See https://github.com/mavlink/mavros/tree/ros2/mavros for connection schemas and defaults
+#
+#     udp://[bind_host][:port]@[remote_host[:port]][/?ids=sysid,compid]
+#     udp default ports: 14555@14550
+#
+#     tcp://[server_host][:port][/?ids=sysid,compid]
+#     tcp default port: 5760
+
+mavros:
+  ros__parameters:
+    use_sim_time: True
+    system_id: 255
+    conn:
+          timeout: 30.0       # O padrão costuma ser 10.0. Aumente para 30 ou 60.
+          heartbeat_rate: 1.0 # Frequência dos batimentos (Hz)
+    # /mavros/local_position/pose requires 2 plugins:
+    #     imu handles the ATTITUDE_QUATERNION msg (MAV id 31)
+    #     local_position handles the LOCAL_POSITION_NED msg (MAV id 32)
+    # Also be sure to set the message interval to ~50ms for these 2 messages
+
+    # The vision_pose plugin is provided by mavros_extras.
+    # MAVROS will not complain if this package is missing.
+
+    plugin_allowlist:
+      - sys_status
+      - command
+      - imu
+      - local_position
+      - rc_io
+      - setpoint_position
+      - vision_pose
+      - param
+
+mavros_node:
+  ros__parameters:
+    fcu_url: "tcp://localhost:5760"
+    gcs_url: "udp://@localhost:14550"
+
+mavros/local_position:
+  ros__parameters:
+    frame_id: "map"
+    tf.send: false
+    tf.frame_id: "map"
+    tf.child_frame_id: "base_link"
+    tf.send_fcu: false
+
+mavros/vision_pose:
+  ros__parameters:
+    tf.listen: false           # enable tf listener (disable topic subscribers)
+    tf.frame_id: "map"
+    tf.child_frame_id: "base_link"
+    tf.rate_limit: 10.0
+
+# imu_pub
+mavros/imu:
+  ros__parameters:
+    frame_id: "base_link"
+    # need find actual values
+    linear_acceleration_stdev: 0.0003
+    angular_velocity_stdev: 0.0003490659  # 0.02 degrees
+    orientation_stdev: 1.0
+    magnetic_stdev: 0.0
+

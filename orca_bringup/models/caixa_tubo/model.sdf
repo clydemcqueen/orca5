@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<sdf version="1.6">
+  <model name="caixa_tubo">
+    <static>true</static>
+    <link name="object">
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://caixa_tubo/meshes/object.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name="collision">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://caixa_tubo/meshes/object.dae</uri>
+            <!--            <scale>1 1 1</scale>-->
+          </mesh>
+        </geometry>
+      </collision>
+      <material>
+        <script>
+          <uri> model://caixa_tubo/materials/script</uri>
+          <uri> model://caixa_tubo/materials/textures</uri>
+          <name>Pool/Normal</name>
+        </script>
+      </material>
+    </link>
+  </model>
+</sdf>

@@ -17,8 +17,11 @@ ament_auto_find_build_dependencies()
 # Generate ROS messages
 rosidl_generate_interfaces(
   orca_msgs
-  msg/BridgeStatus.msg
-  msg/FilterStatus.msg
+  msg_status/BridgeStatus.msg
+  msg_status/FilterStatus.msg
+  action/TargetMode.action
+  msg/Effort.msg
+  msg/Motion.msg
   DEPENDENCIES geometry_msgs sensor_msgs std_msgs
 )
 

@@ -34,16 +34,13 @@ Usage:
 from enum import Enum
 
 import rclpy
-from rclpy.node import Node
 import rclpy.logging
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Point, Pose, PoseStamped
-# from nav2_msgs.action import FollowWaypoints
-# from orca_msgs.action import TargetMode
+from nav2_msgs.action import FollowWaypoints
+from orca_msgs.action import TargetMode
 from rclpy.action import ActionClient
 from std_msgs.msg import Header
-from nav2_msgs.action import FollowWaypoints
-from orca_msgs.msg import TargetMode
 
 
 class SendGoalResult(Enum):
@@ -149,15 +146,21 @@ def main():
     try:
         node = rclpy.create_node("mission_runner")
 
+        # create action clients - send goals to action servers
+        # tells the robot to change mode 
         set_target_mode = ActionClient(node, TargetMode, '/set_target_mode')
+        #tells the robot execute a path
         follow_waypoints = ActionClient(node, FollowWaypoints, '/follow_waypoints')
 
         print('>>> Setting mode to AUV <<<')
+        # send a goal (go_auv) to /set_target_mode
         if send_goal(node, set_target_mode, go_auv) == SendGoalResult.SUCCESS:
             print('>>> Executing mission <<<')
+            # send a goal to follow waypoints
             send_goal(node, follow_waypoints, delay_loop)
 
             print('>>> Setting mode to ROV <<<')
+            # back to ROV mode, like manual
             send_goal(node, set_target_mode, go_rov)
 
             print('>>> Mission complete <<<')

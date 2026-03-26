@@ -1,4 +1,4 @@
-import orca_msgs.msg
+import orca_msgs.msg_status
 import pymavlink.dialects.v20.ardupilotmega as apm
 
 import geometry

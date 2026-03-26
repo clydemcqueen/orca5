@@ -1,0 +1,14 @@
+material Obj/Normal
+{
+  receive_shadows off
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture Medrust3.jpg
+      }
+    }
+  }
+}

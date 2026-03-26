@@ -46,7 +46,7 @@ def generate_launch_description():
 
         DeclareLaunchArgument(
             'orb',
-            default_value='True',
+            default_value='False',
             description='Launch ORB_SLAM3?',
         ),
 
@@ -237,7 +237,7 @@ def generate_launch_description():
         # vectored_6dof as the model, AND the default params must set magic ArduSub parameter FRAME_CONFIG to 2.0.
         # Yaw is provided by Gazebo, so the start yaw value is ignored.
         ExecuteProcess(
-            cmd=['/home/orca5/ardupilot/build/sitl/bin/ardusub', '-S', '--wipe', '-M', 'JSON', '-I0', '--home', '-27.4302290,-48.443398,-0.1,0',
+            cmd=['/home/daniel/ardupilot/build/sitl/bin/ardusub', '-S', '--wipe', '-M', 'JSON', '-I0', '--home', '-27.4302290,-48.443398,-0.1,0',
                  '--defaults', sub_vpe_parm_files if LaunchConfiguration('use_vpe') else sub_vpd_parm_files],
             output='screen',
             condition=IfCondition(LaunchConfiguration('ardusub')),
