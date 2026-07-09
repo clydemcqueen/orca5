@@ -138,14 +138,18 @@ USER $USERNAME
 
 # Clone ArduSub code
 WORKDIR /home/$USERNAME
-RUN git clone https://github.com/clydemcqueen/ardupilot.git --recurse-submodules \
+RUN git clone https://github.com/ArduPilot/ardupilot.git \
   && cd ardupilot \
-  && git checkout 9eb5dc4
+  && git checkout b7ace6c6 \
+  && git submodule update --init --recursive
 
 # Install ArduSub prereqs (this also appends to .bashrc)
 WORKDIR /home/$USERNAME/ardupilot
 ENV SKIP_AP_EXT_ENV=1 SKIP_AP_GRAPHIC_ENV=1 SKIP_AP_COV_ENV=1 SKIP_AP_GIT_CHECK=1
 RUN Tools/environment_install/install-prereqs-ubuntu.sh -y
+
+# future is required by pymavlink but removed from Ubuntu 24.04 (Noble) apt repos
+RUN pip3 install --break-system-packages future
 
 # Build ArduSub
 # Note: waf will capture all of the environment variables in ardupilot/.lock-waf_linux_build.
