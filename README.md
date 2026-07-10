@@ -57,8 +57,10 @@ ArduSub will initialize and start sending MAVLink messages to the SLAM bridge no
 In response, the bridge node will start sending visual odometry messages to ArduSub.
 Wait for these messages from mavproxy:
 ~~~
-AP: EKF3 IMU1 is using external nav data
 AP: EKF3 IMU0 is using external nav data
+AP: EKF3 IMU0 initial pos NED = 0.0,0.0,0.1 (m)
+AP: EKF3 IMU1 is using external nav data
+AP: EKF3 IMU1 initial pos NED = 0.0,0.0,0.1 (m)
 ~~~
 
 Mavproxy is interactive, so we can execute commands. Arm the motors:
@@ -66,11 +68,7 @@ Mavproxy is interactive, so we can execute commands. Arm the motors:
 MANUAL> arm throttle
 Got COMMAND_ACK: COMPONENT_ARM_DISARM: ACCEPTED
 AP: Arming motors
-AP: EKF3 IMU0 origin set
-AP: EKF3 IMU1 origin set
-AP: Using backup location
 ARMED
-Arming checks disabled
 ~~~
 
 Load a mission:
@@ -114,3 +112,8 @@ It has not been tested on a real vehicle (yet).
 
 ORB_SLAM3 provides a `MonocularIMU` mode, but Orca5 currently uses the simpler `Monocular` mode with a down-facing
 rangefinder like the [BlueRobotics Ping Sonar](https://www.bluerobotics.com) to provide scale.
+
+## Tags and ArduSub Versions
+
+* v1: tested with ArduSub at b7ace6c6 (pre-4.7)
+* v2: tested with ArduSub at e5e97094 (during 4.7 release cycle, includes a SIM_JSON fix)
