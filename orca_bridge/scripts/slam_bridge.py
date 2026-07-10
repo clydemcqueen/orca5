@@ -239,6 +239,10 @@ class MonoSlamBridge(rclpy.node.Node):
 
         self.maps.update(msg, self.sub, self.get_logger())
 
+        current_map = self.maps.current_map
+        if current_map is None:
+            return
+
         #----------
         # We have t_world_camera, use this to find map -> base.
         # This will give us 2 map -> base transforms: one from the EKF, one from the SLAM map
@@ -248,7 +252,7 @@ class MonoSlamBridge(rclpy.node.Node):
         t_world_camera = geometry.Pose.from_pose_msg(msg.pose)
 
         # Apply the current SLAM scale
-        t_world_camera.apply_scale(self.maps.current_map.scale)
+        t_world_camera.apply_scale(current_map.scale)
 
         # Find the pose of the camera sensor in the SLAM map frame
         t_slam_camera = self.t_slam_world.mult(t_world_camera)
@@ -260,10 +264,10 @@ class MonoSlamBridge(rclpy.node.Node):
         t_slam_base = t_slam_link.mult(self.t_link_base)
 
         # Calculate the delta from the previous pose
-        if self.maps.current_map.t_slam_base is None:
+        if current_map.t_slam_base is None:
             delta = geometry.Pose()
         else:
-            delta = geometry.Pose.delta_pose(self.maps.current_map.t_slam_base, t_slam_base)
+            delta = geometry.Pose.delta_pose(current_map.t_slam_base, t_slam_base)
 
         delta_p = delta.get_position()
         delta_e = delta.get_euler()
@@ -273,10 +277,10 @@ class MonoSlamBridge(rclpy.node.Node):
             flags |= orca_msgs.msg.BridgeStatus.OK_OUTLIER
 
         # Save the current slam->base transform
-        self.maps.current_map.update_pose(t_slam_base)
+        current_map.update_pose(t_slam_base)
 
         # Find the pose of the base link (the ROV) in the map frame
-        t_map_base = self.maps.current_map.t_map_slam.mult(t_slam_base)
+        t_map_base = current_map.t_map_slam.mult(t_slam_base)
 
         #----------
         # Send a VISION_POSITION_DELTA (VPD) or VISION_POSITION_ESTIMATE (VPE) message to ArduSub
@@ -316,7 +320,7 @@ class MonoSlamBridge(rclpy.node.Node):
         tf_msg.header.stamp = msg.header.stamp
         tf_msg.header.frame_id = 'map'
         tf_msg.child_frame_id = 'slam'
-        tf_msg.transform = self.maps.current_map.t_map_slam.to_transform_msg()
+        tf_msg.transform = current_map.t_map_slam.to_transform_msg()
         self.tf_broadcaster.sendTransform(tf_msg)
 
         # Publish the ROV pose as determined by ORB_SLAM3
