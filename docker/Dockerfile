@@ -140,7 +140,7 @@ USER $USERNAME
 WORKDIR /home/$USERNAME
 RUN git clone https://github.com/ArduPilot/ardupilot.git \
   && cd ardupilot \
-  && git checkout b7ace6c6 \
+  && git checkout e5e97094 \
   && git submodule update --init --recursive
 
 # Install ArduSub prereqs (this also appends to .bashrc)

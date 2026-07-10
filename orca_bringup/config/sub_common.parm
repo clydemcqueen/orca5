@@ -1,6 +1,7 @@
 # Parameters for sub SITL, common across the vpd and vpe cases
 
-# These are copied from ardupilot/Tools/autotest/default_params/sub.parm as of b7ace6c6
+# These are copied from ardupilot/Tools/autotest/default_params/sub.parm as of e5e97094
+# RNGFND1* are commented out
 ARSPD_PIN 1
 ARSPD_BUS 2
 BATT_MONITOR     4
@@ -69,16 +70,16 @@ MNT1_PITCH_MIN -45
 MNT1_DEFLT_MODE 3
 MNT1_RC_RATE 30
 MNT1_TYPE 7
-PSC_ACCZ_P   2
-PSC_ACCZ_I   4
-PSC_ACCZ_FF  0.75
-PSC_VELZ_P   8
-PSC_POSZ_P   3
-PSC_POSXY_P 2.5
-PSC_VELXY_D 0.8
-PSC_VELXY_I 0.5
-PSC_VELXY_P 5.0
-# RNGFND1_MAX_CM   3000
+PSC_D_ACC_P   0.2
+PSC_D_ACC_I   0.4
+PSC_D_ACC_FF  0.075
+PSC_D_VEL_P   8
+PSC_D_POS_P   3
+PSC_NE_POS_P 2.5
+PSC_NE_VEL_D 0.8
+PSC_NE_VEL_I 0.5
+PSC_NE_VEL_P 5.0
+# RNGFND1_MAX   30.00
 # RNGFND1_PIN   0
 # RNGFND1_SCALING   12.12
 # RNGFND1_TYPE   1
@@ -88,15 +89,18 @@ SERVO8_MIN 1100
 BARO_EXT_BUS 1
 PILOT_ACCEL_Z 200
 PILOT_SPEED_UP 200
-PSC_JERK_Z 8
+PSC_JERK_D 8
 LOG_BITMASK      180222
 SIM_BARO_RND     0.02
+RC_OPTIONS 0
+RC3_TRIM 1500
+RC_PROTOCOLS 1
 
 # Add a simulated down-facing sonar
 RNGFND1_TYPE 100        # Type = SITL
 RNGFND1_FUNCTION 0      # Function = LINEAR
-RNGFND1_MIN_CM 20       # Min distance is 0.5m
-RNGFND1_MAX_CM 5000     # Max distance is 50m
+RNGFND1_MIN 0.2
+RNGFND1_MAX 50.0
 RNGFND1_ORIENT 25       # Down
 RNGFND1_POS_X -0.18
 RNGFND1_POS_Y 0.0
@@ -105,19 +109,14 @@ RNGFND1_POS_Z -0.095
 # Suppress "Lost manual control" messages
 FS_PILOT_INPUT 0
 
-# Set a default origin, the first "arm throttle" will apply this
-ORIGIN_LAT 47.6302          # Default origin
-ORIGIN_LON -122.3982391     # Default origin
-
-# Default for RC_PROTOCOLS is 0 (none); set to 1 (all)
-# This is required to support mavproxy `rc` commands with the `--sitl ...` option
-# See https://github.com/ArduPilot/ardupilot/pull/29742
-RC_PROTOCOLS 1
+# Set the AHRS origin
+AHRS_ORIGIN_LAT 47.6302
+AHRS_ORIGIN_LON -122.3982391
 
 # Slow down
-WPNAV_SPEED 30
-WPNAV_SPEED_UP 30
-WPNAV_SPEED_DN 30
+WP_SPD 0.3
+WP_SPD_UP 0.3
+WP_SPD_DN 0.3
 
 # Turn to face the next waypoint
 WP_YAW_BEHAVIOR 1

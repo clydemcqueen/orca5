@@ -420,8 +420,8 @@
         Configure ArduSub to use a SITL rangefinder backend:
         param set RNGFND1_TYPE 100        # Type = SITL
         param set RNGFND1_FUNCTION 0      # Function = LINEAR
-        param set RNGFND1_MIN_CM 20       # Min distance is 0.5m
-        param set RNGFND1_MAX_CM 5000     # Max distance is 50m
+        param set RNGFND1_MIN 0.2
+        param set RNGFND1_MAX 50.0
         param set RNGFND1_ORIENT 25       # Down
         param set RNGFND1_POS_X @ping_x
         param set RNGFND1_POS_Y @ping_y
