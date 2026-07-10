@@ -1,0 +1,12 @@
+# Version control
+.git/
+.gitignore
+
+# Host Python env
+pyproject.toml
+.venv/
+
+# Stuff we don't need in the container
+images/
+LICENSE
+README.md
