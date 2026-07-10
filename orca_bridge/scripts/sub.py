@@ -12,10 +12,10 @@ class Sub:
     # Listen to these MAVLink messages
     MAVLINK_MSGS = [
         'ATTITUDE',  # Orientation, always available
+        'DISTANCE_SENSOR',  # Sonar rangefinder
         'EKF_STATUS_REPORT',  # Filter status
         'GLOBAL_POSITION_INT',  # Altitude above home, use if filter_status == ALT_ONLY
         'LOCAL_POSITION_NED',  # Position, use if filter_status == HORIZ_REL
-        'RANGEFINDER',  # Sonar rangefinder
         'STATUSTEXT',  # Messages
     ]
 
@@ -51,6 +51,10 @@ class Sub:
             msg_type = msg.get_type()
             if msg_type == 'ATTITUDE':
                 self.t_map_base_ned.set_euler(msg.roll, msg.pitch, msg.yaw)
+            elif msg_type == 'DISTANCE_SENSOR':
+                # Get the distance to the seafloor for scale
+                dist_m = msg.current_distance * 0.01
+                self.sonar_rf_distance = dist_m if dist_m > 0.0 else 1.0
             elif msg_type == 'EKF_STATUS_REPORT':
                 old_flags = self.ekf_status_report.flags
                 self.ekf_status_report = msg
@@ -62,9 +66,6 @@ class Sub:
                     self.t_map_base_ned.set_altitude(-msg.relative_alt / 1e3)  # Height above home, flip sign for NED
             elif msg_type == 'LOCAL_POSITION_NED':
                 self.t_map_base_ned.set_position(msg.x, msg.y, msg.z)
-            elif msg_type == 'RANGEFINDER':
-                # Hack to support testing
-                self.sonar_rf_distance = msg.distance if msg.distance > 0.0 else 1.0
             elif msg_type == 'STATUSTEXT':
                 if msg.text == 'script button 1':
                     self.button1 = True
