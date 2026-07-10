@@ -1,0 +1,9 @@
+[tool.pyrefly]
+python-interpreter-path = ".venv/bin/python"
+search_path = [
+    "orca_bridge/scripts",
+    "orca_bringup/scripts",
+    "/opt/ros/jazzy/lib/python3.12/site-packages",
+    "/home/clyde/workspaces/orca5_ws/install/orca_msgs/lib/python3.12/site-packages",
+    "/home/clyde/workspaces/orca5_ws/install/orb_slam3_msgs/lib/python3.12/site-packages"
+]
