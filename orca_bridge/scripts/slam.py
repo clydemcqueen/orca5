@@ -92,8 +92,8 @@ class SlamMap:
         self.map_id = map_id
 
         # Rangefinder readings for logging
-        self.sonar_rf = float(sonar_rf)
-        self.slam_rf = float(slam_rf)
+        self.sonar_rf = sonar_rf
+        self.slam_rf = slam_rf
 
         # Scale factor for this map. Default to 1.0 until we get a good reading, then use a low pass filter
         self.scale = 1.0
@@ -104,15 +104,15 @@ class SlamMap:
         self.t_map_slam = t_map_base
 
         # The latest pose of the base link in the slam frame
-        self.t_slam_base = None
+        self.t_slam_base: geometry.Pose | None = None
 
     def update_scale(self, sonar_rf: float, slam_rf: float):
-        self.sonar_rf = float(sonar_rf)
-        self.slam_rf = float(slam_rf)
+        self.sonar_rf = sonar_rf
+        self.slam_rf = slam_rf
 
         # Drop bad readings
         if slam_rf > 0.05:
-            self.scale = float(self.scale_filter.update(sonar_rf / slam_rf))
+            self.scale = self.scale_filter.update(sonar_rf / slam_rf)
 
     def update_pose(self, t_slam_base: geometry.Pose):
         self.t_slam_base = t_slam_base
@@ -134,12 +134,17 @@ class SlamMaps:
             logger.error('Not tracking, do not update')
             return
 
+        sonar_rf_distance = sub.sonar_rf_distance
+        if sonar_rf_distance is None:
+            logger.error('sonar_rf_distance is None in SlamMaps.update')
+            return
+
         slam_rf_distance = rf_distance(msg)
 
         if self.current_map is None or msg.map_id not in self.maps:
             logger.info(f'Create map {msg.map_id}')
             t_map_base = sub.t_map_base_ned.ned_to_enu_frame()  # Use axes-only conversion
-            self.maps[msg.map_id] = SlamMap(msg.map_id, sub.sonar_rf_distance, slam_rf_distance, t_map_base)
+            self.maps[msg.map_id] = SlamMap(msg.map_id, sonar_rf_distance, slam_rf_distance, t_map_base)
             self.current_map = self.maps[msg.map_id]
         else:
             if self.current_map.map_id != msg.map_id:
@@ -147,4 +152,4 @@ class SlamMaps:
                 # Sadly, we lose the old pose and scale information.
                 logger.error(f'Switch to map {msg.map_id} -- WTF')
                 self.current_map = self.maps[msg.map_id]
-            self.current_map.update_scale(sub.sonar_rf_distance, slam_rf_distance)
+            self.current_map.update_scale(sonar_rf_distance, slam_rf_distance)

@@ -15,10 +15,10 @@ class Pose:
     """Simple pose object, using 2 tuples"""
 
     # Static transform camera_sensor (OpenCV) -> camera_link (FLU)
-    T_OPENCV_FLU = None
+    T_OPENCV_FLU: 'Pose'
     
     # Static transform camera_link (FLU) -> camera_sensor (OpenCV)
-    T_FLU_OPENCV = None
+    T_FLU_OPENCV: 'Pose'
 
     def __init__(self, p: tuple[float, float, float] = (0., 0., 0.), q: tuple[float, float, float, float] = (1., 0., 0., 0.)):
         self.p: tuple[float, float, float] = p
@@ -58,7 +58,7 @@ class Pose:
     def set_euler(self, roll: float, pitch: float, yaw: float):
         self.q = transforms3d.euler.euler2quat(roll, pitch, yaw)
 
-    def get_euler(self) -> (float, float, float):
+    def get_euler(self) -> tuple[float, float, float]:
         return transforms3d.euler.quat2euler(self.q)
 
     def ned_to_enu_frame(self):

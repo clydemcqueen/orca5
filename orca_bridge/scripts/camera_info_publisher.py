@@ -3,7 +3,7 @@
 import rclpy
 import rclpy.node
 import sensor_msgs.msg
-import yaml
+import yaml  # type: ignore
 
 
 class CameraInfoPublisher(rclpy.node.Node):
@@ -59,6 +59,8 @@ class CameraInfoPublisher(rclpy.node.Node):
         return cam_info
 
     def timer_callback(self):
+        if self.camera_info_msg_ is None:
+            return
         self.camera_info_msg_.header.stamp = self.get_clock().now().to_msg()
         self.camera_info_msg_.header.frame_id = self.frame_id_
         self.publisher_.publish(self.camera_info_msg_)

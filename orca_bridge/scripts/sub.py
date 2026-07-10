@@ -24,7 +24,7 @@ class Sub:
         self.ekf_status_report = orca_msgs.msg.FilterStatus()  # Empty message
         self.ekf_status_time: float | None = None
         self.t_map_base_ned = geometry.Pose()
-        self.sonar_rf_distance = None
+        self.sonar_rf_distance: float | None = None
         self.button1 = False
 
     def ekf_const_pos(self):
