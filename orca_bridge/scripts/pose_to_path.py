@@ -4,14 +4,14 @@
 Subscribe to a PoseStamped topic, accumulate poses, and publish a Path message
 """
 
+import geometry_msgs.msg
+import nav_msgs.msg
 import rclpy
 import rclpy.node
 import rclpy.qos
-import geometry_msgs.msg
-import nav_msgs.msg
+
 
 class PoseToPathNode(rclpy.node.Node):
-
     def __init__(self):
         super().__init__('pose_to_path')
 

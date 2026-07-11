@@ -1,12 +1,11 @@
 import math
 
-import orb_slam3_msgs.msg
-import numpy as np
-import sensor_msgs.msg
-from sensor_msgs_py import point_cloud2
-
 import geometry
+import numpy as np
+import orb_slam3_msgs.msg
+import sensor_msgs.msg
 import sub
+from sensor_msgs_py import point_cloud2
 
 
 def scale_cloud(msg: sensor_msgs.msg.PointCloud2, scale: float):
@@ -28,7 +27,7 @@ def rf_distance(msg: orb_slam3_msgs.msg.SlamStatus) -> float:
     t_camera_world = geometry.Pose.from_pose_msg(msg.pose).inverse()
 
     z_values = []
-    for p in point_cloud2.read_points(msg.tracked_points, field_names=["x", "y", "z"], skip_nans=True):
+    for p in point_cloud2.read_points(msg.tracked_points, field_names=['x', 'y', 'z'], skip_nans=True):
         # Move the tracked points from the world frame to the camera frame
         point_f_world = geometry.Pose()
         point_f_world.set_position(*p)
@@ -62,7 +61,7 @@ class LowPassFilter:
                    Typical values: 0.1 to 0.5
         """
         if not 0 < alpha <= 1:
-            raise ValueError("Alpha must be between 0 (exclusive) and 1 (inclusive)")
+            raise ValueError('Alpha must be between 0 (exclusive) and 1 (inclusive)')
 
         self.alpha = alpha
         self.value = None
