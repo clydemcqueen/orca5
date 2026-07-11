@@ -86,8 +86,7 @@ class MonoSlamBridge(rclpy.node.Node):
         self.get_logger().info(f'Waiting for heartbeat on {mav_device}...')
         self.conn.wait_heartbeat()
         self.get_logger().info(
-            'Heartbeat received from system (system %u component %u)'
-            % (self.conn.target_system, self.conn.target_component)
+            f'Heartbeat received from system (system {self.conn.target_system} component {self.conn.target_component})'
         )
 
         # Subscriptions
