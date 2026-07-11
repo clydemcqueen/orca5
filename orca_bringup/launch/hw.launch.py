@@ -9,7 +9,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -32,70 +32,77 @@ def generate_launch_description():
             default_value='False',
             description='Bag interesting topics?',
         ),
-
         DeclareLaunchArgument(
             'bridge',
             default_value='True',
             description='Launch SLAM bridge?',
         ),
-
         DeclareLaunchArgument(
             'orb',
             default_value='True',
             description='Launch ORB_SLAM3?',
         ),
-
         DeclareLaunchArgument(
             'rviz',
             default_value='True',
             description='Launch rviz?',
         ),
-
         DeclareLaunchArgument(
             'use_vpe',
             default_value='True',
             description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
         ),
-
         Node(
             package='gscam2',
             executable='gscam_main',
             output='screen',
-            parameters=[{
-                'camera_name': camera_name,
-                'camera_info_url': camera_info_url,
-                'frame_id': 'camera_sensor',
-                'gscam_config': gscam_config,
-                'skip': skip,
-                'use_sim_time': False,
-            }],
+            parameters=[
+                {
+                    'camera_name': camera_name,
+                    'camera_info_url': camera_info_url,
+                    'frame_id': 'camera_sensor',
+                    'gscam_config': gscam_config,
+                    'skip': skip,
+                    'use_sim_time': False,
+                }
+            ],
             condition=IfCondition(LaunchConfiguration('orb')),
         ),
-
         # Publish the static base_link -> camera_link transform.
         # Modify this for your vehicle
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
-            parameters=[{
-                'use_sim_time': False,
-            }],
+            parameters=[
+                {
+                    'use_sim_time': False,
+                }
+            ],
             arguments=[
-                '--x', '0',
-                '--y', '0',
-                '--z', '0',
-                '--roll', '0',
-                '--pitch', str(math.pi / 2),
-                '--yaw', '0',
-                '--frame-id', 'base_link',
-                '--child-frame-id', 'camera_link',
+                '--x',
+                '0',
+                '--y',
+                '0',
+                '--z',
+                '0',
+                '--roll',
+                '0',
+                '--pitch',
+                str(math.pi / 2),
+                '--yaw',
+                '0',
+                '--frame-id',
+                'base_link',
+                '--child-frame-id',
+                'camera_link',
             ],
         ),
-
         # Bag useful topics
         ExecuteProcess(
             cmd=[
-                'ros2', 'bag', 'record',
+                'ros2',
+                'bag',
+                'record',
                 '--include-hidden-topics',
                 '/bridge_status',
                 '/camera_info',
@@ -112,19 +119,19 @@ def generate_launch_description():
             output='screen',
             condition=IfCondition(LaunchConfiguration('bag')),
         ),
-
         # Launch rviz
         Node(
             package='rviz2',
             executable='rviz2',
             output='screen',
-            parameters=[{
-                'use_sim_time': False,
-            }],
+            parameters=[
+                {
+                    'use_sim_time': False,
+                }
+            ],
             arguments=['-d', os.path.join(orca_bringup_dir, 'rviz', 'hw.rviz')],
             condition=IfCondition(LaunchConfiguration('rviz')),
         ),
-
         # Bring up SLAM nodes
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(orca_bringup_dir, 'launch', 'bringup.launch.py')),

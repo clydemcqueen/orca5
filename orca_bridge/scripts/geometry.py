@@ -16,11 +16,15 @@ class Pose:
 
     # Static transform camera_sensor (OpenCV) -> camera_link (FLU)
     T_OPENCV_FLU: 'Pose'
-    
+
     # Static transform camera_link (FLU) -> camera_sensor (OpenCV)
     T_FLU_OPENCV: 'Pose'
 
-    def __init__(self, p: tuple[float, float, float] = (0., 0., 0.), q: tuple[float, float, float, float] = (1., 0., 0., 0.)):
+    def __init__(
+        self,
+        p: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        q: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0),
+    ):
         self.p: tuple[float, float, float] = p
         self.q: tuple[float, float, float, float] = q
 
@@ -28,13 +32,15 @@ class Pose:
     def from_pose_msg(pose_msg: geometry_msgs.msg.Pose):
         return Pose(
             (pose_msg.position.x, pose_msg.position.y, pose_msg.position.z),
-            (pose_msg.orientation.w, pose_msg.orientation.x, pose_msg.orientation.y, pose_msg.orientation.z))
+            (pose_msg.orientation.w, pose_msg.orientation.x, pose_msg.orientation.y, pose_msg.orientation.z),
+        )
 
     @staticmethod
     def from_transform_msg(tf_msg: geometry_msgs.msg.Transform):
         return Pose(
             (tf_msg.translation.x, tf_msg.translation.y, tf_msg.translation.z),
-            (tf_msg.rotation.w, tf_msg.rotation.x, tf_msg.rotation.y, tf_msg.rotation.z))
+            (tf_msg.rotation.w, tf_msg.rotation.x, tf_msg.rotation.y, tf_msg.rotation.z),
+        )
 
     @staticmethod
     def delta_pose(pose1: 'Pose', pose2: 'Pose'):
@@ -63,7 +69,7 @@ class Pose:
 
     def ned_to_enu_frame(self):
         """Convert NED to ENU by swapping axes only."""
-        
+
         # Rearrange position axes
         p_enu = (self.p[1], self.p[0], -self.p[2])
 
@@ -74,7 +80,7 @@ class Pose:
 
     def ned_to_enu_standard(self):
         """Convert NED to ENU by swapping axes and rotating by 90 degrees around Z axis."""
-        
+
         # Rearrange position axes
         p_enu = (self.p[1], self.p[0], -self.p[2])
 
@@ -89,12 +95,12 @@ class Pose:
 
     def enu_to_ned_frame(self):
         """Convert ENU to NED by swapping axes only."""
-        
+
         return self.ned_to_enu_frame()  # Symmetric transformation
 
     def enu_to_ned_standard(self):
         """Convert ENU to NED by swapping axes and rotating by -90 degrees around Z axis."""
-        
+
         # Rearrange position axes
         p_ned = (self.p[1], self.p[0], -self.p[2])
 
@@ -150,7 +156,7 @@ class Pose:
     def __str__(self):
         p = self.p
         e = self.get_euler()
-        return f"p=[{p[0] :8.3f}, {p[1] :8.3f}, {p[2] :8.3f}], e=[{e[0] :8.3f}, {e[1] :8.3f}, {e[2] :8.3f}]"
+        return f'p=[{p[0]:8.3f}, {p[1]:8.3f}, {p[2]:8.3f}], e=[{e[0]:8.3f}, {e[1]:8.3f}, {e[2]:8.3f}]'
 
 
 # Initialize static transforms

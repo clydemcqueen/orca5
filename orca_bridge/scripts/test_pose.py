@@ -10,6 +10,7 @@ colcon --log-level DEBUG test --packages-select orca_bridge --event-handlers=con
 
 import math
 import unittest
+
 import transforms3d
 from geometry import Pose
 
@@ -24,11 +25,9 @@ class TestPoseCoordinateConversions(unittest.TestCase):
     def assertPoseAlmostEqual(self, pose1, pose2, places=6):
         """Helper to assert that two poses are approximately equal."""
         for i in range(3):
-            self.assertAlmostEqual(pose1.p[i], pose2.p[i], places=places,
-                                   msg=f"Position component {i} differs")
+            self.assertAlmostEqual(pose1.p[i], pose2.p[i], places=places, msg=f'Position component {i} differs')
         for i in range(4):
-            self.assertAlmostEqual(pose1.q[i], pose2.q[i], places=places,
-                                   msg=f"Quaternion component {i} differs")
+            self.assertAlmostEqual(pose1.q[i], pose2.q[i], places=places, msg=f'Quaternion component {i} differs')
 
     def test_ned_to_enu_frame_position_basic(self):
         """Test to_enu_frame converts NED position to ENU correctly."""
@@ -258,17 +257,17 @@ class TestPoseCoordinateConversions(unittest.TestCase):
         pose_ned = Pose(p=(1.0, 2.0, 3.0), q=q)
 
         # Check NED quaternion is normalized
-        q_norm: float = sum(x ** 2 for x in pose_ned.q)
+        q_norm: float = sum(x**2 for x in pose_ned.q)
         self.assertAlmostEqual(q_norm, 1.0)
 
         # Convert to ENU and check normalization
         pose_enu = pose_ned.ned_to_enu_frame()
-        q_norm_enu:float = sum(x ** 2 for x in pose_enu.q)
+        q_norm_enu: float = sum(x**2 for x in pose_enu.q)
         self.assertAlmostEqual(q_norm_enu, 1.0)
 
         # Convert to standard and check normalization
         pose_enu_std = pose_ned.ned_to_enu_standard()
-        q_norm_enu_std:float = sum(x ** 2 for x in pose_enu_std.q)
+        q_norm_enu_std: float = sum(x**2 for x in pose_enu_std.q)
         self.assertAlmostEqual(q_norm_enu_std, 1.0)
 
     def test_large_position_values(self):

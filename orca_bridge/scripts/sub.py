@@ -1,7 +1,7 @@
-import orca_msgs.msg
+import geometry
 import pymavlink.dialects.v20.ardupilotmega as apm
 
-import geometry
+import orca_msgs.msg
 
 
 class Sub:
@@ -60,7 +60,9 @@ class Sub:
                 self.ekf_status_report = msg
                 self.ekf_status_time = now_s
                 if old_flags != self.ekf_status_report.flags:
-                    logger.info(f'EKF status change {old_flags} => {self.ekf_status_report.flags}, const_pos={self.ekf_const_pos()}, horiz_rel={self.ekf_horiz_rel()}')
+                    logger.info(
+                        f'EKF status change {old_flags} => {self.ekf_status_report.flags}, const_pos={self.ekf_const_pos()}, horiz_rel={self.ekf_horiz_rel()}'
+                    )
             elif msg_type == 'GLOBAL_POSITION_INT':
                 if self.ekf_const_pos():
                     self.t_map_base_ned.set_altitude(-msg.relative_alt / 1e3)  # Height above home, flip sign for NED

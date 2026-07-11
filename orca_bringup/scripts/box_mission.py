@@ -31,18 +31,12 @@ def compute_location(lat, lon, dist_n, dist_e):
     """
     # First move north/south
     if dist_n != 0:
-        point = distance.distance(meters=abs(dist_n)).destination(
-            (lat, lon),
-            bearing=0 if dist_n > 0 else 180
-        )
+        point = distance.distance(meters=abs(dist_n)).destination((lat, lon), bearing=0 if dist_n > 0 else 180)
         lat, lon = point.latitude, point.longitude
 
     # Then move east/west
     if dist_e != 0:
-        point = distance.distance(meters=abs(dist_e)).destination(
-            (lat, lon),
-            bearing=90 if dist_e > 0 else 270
-        )
+        point = distance.distance(meters=abs(dist_e)).destination((lat, lon), bearing=90 if dist_e > 0 else 270)
         lat, lon = point.latitude, point.longitude
 
     return lat, lon

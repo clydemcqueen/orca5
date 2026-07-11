@@ -31,7 +31,7 @@ visual_y = 0.338
 visual_z = 0.25
 
 # Propellers
-propeller_size = "0.1 0.02 0.01"
+propeller_size = '0.1 0.02 0.01'
 propeller_mass = 0.002
 propeller_ixx = 0.001
 propeller_iyy = 0.001
@@ -84,7 +84,7 @@ fluid_density = 1000
 collision_x = visual_x
 collision_y = visual_y
 collision_z = displaced_mass / (visual_x * visual_y * fluid_density)
-print(f'total_mass = {total_mass :.4f}, displaced_mass = {displaced_mass :.4f}, collision_z = {collision_z :.4f}')
+print(f'total_mass = {total_mass:.4f}, displaced_mass = {displaced_mass:.4f}, collision_z = {collision_z:.4f}')
 
 # The center of mass is just above the origin
 mass_z = 0.011
@@ -128,14 +128,15 @@ control_offset = -0.5
 use_angvel_cmd = False
 
 # Set by update_globals()
-cw_control_multiplier = 0   # Thrusters 3, 4 and 6
+cw_control_multiplier = 0  # Thrusters 3, 4 and 6
 ccw_control_multiplier = 0  # Thrusters 1, 2 and 5
-thruster1_topic = "/model/orca5/joint/thruster1_joint/cmd_"
-thruster2_topic = "/model/orca5/joint/thruster2_joint/cmd_"
-thruster3_topic = "/model/orca5/joint/thruster3_joint/cmd_"
-thruster4_topic = "/model/orca5/joint/thruster4_joint/cmd_"
-thruster5_topic = "/model/orca5/joint/thruster5_joint/cmd_"
-thruster6_topic = "/model/orca5/joint/thruster6_joint/cmd_"
+thruster1_topic = '/model/orca5/joint/thruster1_joint/cmd_'
+thruster2_topic = '/model/orca5/joint/thruster2_joint/cmd_'
+thruster3_topic = '/model/orca5/joint/thruster3_joint/cmd_'
+thruster4_topic = '/model/orca5/joint/thruster4_joint/cmd_'
+thruster5_topic = '/model/orca5/joint/thruster5_joint/cmd_'
+thruster6_topic = '/model/orca5/joint/thruster6_joint/cmd_'
+
 
 # Fossen equation, see "Guidance and Control of Ocean Vehicles" p. 246
 def thrust_to_ang_vel(thrust):
@@ -155,13 +156,13 @@ def update_globals():
     global thruster6_topic
 
     if use_angvel_cmd:
-        print("control method: angular velocity")
-        thruster1_topic += "vel"
-        thruster2_topic += "vel"
-        thruster3_topic += "vel"
-        thruster4_topic += "vel"
-        thruster5_topic += "vel"
-        thruster6_topic += "vel"
+        print('control method: angular velocity')
+        thruster1_topic += 'vel'
+        thruster2_topic += 'vel'
+        thruster3_topic += 'vel'
+        thruster4_topic += 'vel'
+        thruster5_topic += 'vel'
+        thruster6_topic += 'vel'
 
         # Angular velocity range in rad/s
         # Thrust ~ sqrt(angular velocity), so the curves are quite different
@@ -169,13 +170,13 @@ def update_globals():
         cw_control_multiplier = -thrust_to_ang_vel(max_thrust) * 2
         ccw_control_multiplier = thrust_to_ang_vel(max_thrust) * 2
     else:
-        print("control method: thrust force")
-        thruster1_topic += "thrust"
-        thruster2_topic += "thrust"
-        thruster3_topic += "thrust"
-        thruster4_topic += "thrust"
-        thruster5_topic += "thrust"
-        thruster6_topic += "thrust"
+        print('control method: thrust force')
+        thruster1_topic += 'thrust'
+        thruster2_topic += 'thrust'
+        thruster3_topic += 'thrust'
+        thruster4_topic += 'thrust'
+        thruster5_topic += 'thrust'
+        thruster6_topic += 'thrust'
 
         # Force range [-50, 50] in N
         cw_control_multiplier = max_thrust * 2
@@ -183,19 +184,19 @@ def update_globals():
 
 
 def generate_model(input_path, output_path):
-    s = open(input_path, "r").read()
-    pattern = re.compile(r"@(\w+)")
+    s = open(input_path, 'r').read()
+    pattern = re.compile(r'@(\w+)')
     # globals()['foo'] will return the value of foo
     s = re.sub(pattern, lambda m: str(globals()[m.group(1)]), s)
-    open(output_path, "w").write(s)
+    open(output_path, 'w').write(s)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     if len(sys.argv) != 4:
-        print("Usage:")
-        print("generate_model.py infile outfile 0|1")
-        print("0: control thrust force")
-        print("1: control angular velocity")
+        print('Usage:')
+        print('generate_model.py infile outfile 0|1')
+        print('0: control thrust force')
+        print('1: control angular velocity')
         exit(-100)
 
     use_angvel_cmd = bool(int(sys.argv[3]))

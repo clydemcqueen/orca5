@@ -7,9 +7,9 @@ Monocular SLAM to ArduSub bridge
 import math
 
 import builtin_interfaces.msg
+import geometry
 import geometry_msgs.msg
 import orb_slam3_msgs.msg
-import orca_msgs.msg
 import pymavlink.dialects.v20.ardupilotmega as apm
 import pymavlink.mavutil
 import rclpy
@@ -17,12 +17,12 @@ import rclpy.node
 import rclpy.serialization
 import rclpy.time
 import sensor_msgs.msg
+import slam
 import std_srvs.srv
+import sub
 import tf2_ros
 
-import geometry
-import slam
-import sub
+import orca_msgs.msg
 
 
 def stamp_to_s(stamp: builtin_interfaces.msg.Time) -> float:
@@ -79,15 +79,16 @@ class MonoSlamBridge(rclpy.node.Node):
         # Open a mavlink connection
         mav_device = self.declare_parameter('mav_device', 'udpin:0.0.0.0:14551').get_parameter_value().string_value
         self.conn = pymavlink.mavutil.mavlink_connection(
-            mav_device,
-            source_system=MonoSlamBridge.SOURCE_SYSTEM,
-            source_component=MonoSlamBridge.SOURCE_COMPONENT)
+            mav_device, source_system=MonoSlamBridge.SOURCE_SYSTEM, source_component=MonoSlamBridge.SOURCE_COMPONENT
+        )
 
         # Wait for a heartbeat
         self.get_logger().info(f'Waiting for heartbeat on {mav_device}...')
         self.conn.wait_heartbeat()
-        self.get_logger().info('Heartbeat received from system (system %u component %u)' %
-                               (self.conn.target_system, self.conn.target_component))
+        self.get_logger().info(
+            'Heartbeat received from system (system %u component %u)'
+            % (self.conn.target_system, self.conn.target_component)
+        )
 
         # Subscriptions
         self.map_sub = self.create_subscription(sensor_msgs.msg.PointCloud2, 'map_points', self.map_callback, 10)
@@ -136,9 +137,11 @@ class MonoSlamBridge(rclpy.node.Node):
         Change the EKF source set to use SLAM (set 1) or no XY source (set 2).
         See the EK3_SRCn_xxxXY parameters in orca_bringup/config/sub.parm
         """
-        self.conn.mav.send(apm.MAVLink_command_int_message(
-            1, 1, 0, apm.MAV_CMD_SET_EKF_SOURCE_SET, 0, 0,
-            1 if slam_tracking else 2, 0, 0, 0, 0, 0, 0))
+        self.conn.mav.send(
+            apm.MAVLink_command_int_message(
+                1, 1, 0, apm.MAV_CMD_SET_EKF_SOURCE_SET, 0, 0, 1 if slam_tracking else 2, 0, 0, 0, 0, 0, 0
+            )
+        )
 
     def is_outlier(self, delta_p, delta_e) -> bool:
         """Return true if the delta is too great."""
@@ -156,15 +159,21 @@ class MonoSlamBridge(rclpy.node.Node):
             return True
 
         if abs(delta_roll) > self.max_delta_rot:
-            self.get_logger().warn(f'Outlier: roll_delta={math.degrees(delta_roll):.3f}deg (max {math.degrees(self.max_delta_rot):.3f}deg)')
+            self.get_logger().warn(
+                f'Outlier: roll_delta={math.degrees(delta_roll):.3f}deg (max {math.degrees(self.max_delta_rot):.3f}deg)'
+            )
             return True
 
         if abs(delta_pitch) > self.max_delta_rot:
-            self.get_logger().warn(f'Outlier: pitch_delta={math.degrees(delta_pitch):.3f}deg (max {math.degrees(self.max_delta_rot):.3f}deg)')
+            self.get_logger().warn(
+                f'Outlier: pitch_delta={math.degrees(delta_pitch):.3f}deg (max {math.degrees(self.max_delta_rot):.3f}deg)'
+            )
             return True
 
         if abs(delta_yaw) > self.max_delta_rot:
-            self.get_logger().warn(f'Outlier: yaw_delta={math.degrees(delta_yaw):.3f}deg (max {math.degrees(self.max_delta_rot):.3f}deg)')
+            self.get_logger().warn(
+                f'Outlier: yaw_delta={math.degrees(delta_yaw):.3f}deg (max {math.degrees(self.max_delta_rot):.3f}deg)'
+            )
             return True
 
         return False
@@ -181,10 +190,9 @@ class MonoSlamBridge(rclpy.node.Node):
         self.bridge_status_pub.publish(bridge_status_msg)
 
     def slam_callback(self, msg: orb_slam3_msgs.msg.SlamStatus):
-
-        #----------
+        # ----------
         # Wait for everything to warm up
-        #----------
+        # ----------
 
         flags = 0
 
@@ -196,7 +204,9 @@ class MonoSlamBridge(rclpy.node.Node):
                 t_link_base = self.tf_buffer.lookup_transform('camera_link', 'base_link', msg_time)
                 self.t_link_base = geometry.Pose.from_transform_msg(t_link_base.transform)
             else:
-                self.get_logger().warn('Cannot get tf from base_link to camera_link, dropping slam message', throttle_duration_sec=1.0)
+                self.get_logger().warn(
+                    'Cannot get tf from base_link to camera_link, dropping slam message', throttle_duration_sec=1.0
+                )
                 flags |= orca_msgs.msg.BridgeStatus.WAIT_TRANSFORMS
 
         # Wait for sonar rangefinder readings
@@ -209,9 +219,9 @@ class MonoSlamBridge(rclpy.node.Node):
             self.get_logger().warn('EKF not healthy, dropping slam message', throttle_duration_sec=1.0)
             flags |= orca_msgs.msg.BridgeStatus.WAIT_EKF
 
-        #----------
+        # ----------
         # Update SLAM state
-        #----------
+        # ----------
 
         # Wait for ORB_SLAM3 to create a map and start tracking
         if msg.tracking_state != orb_slam3_msgs.msg.SlamStatus.TRACKING_OK:
@@ -243,10 +253,10 @@ class MonoSlamBridge(rclpy.node.Node):
         if current_map is None:
             return
 
-        #----------
+        # ----------
         # We have t_world_camera, use this to find map -> base.
         # This will give us 2 map -> base transforms: one from the EKF, one from the SLAM map
-        #----------
+        # ----------
 
         # We are given the pose of the camera sensor in the world frame
         t_world_camera = geometry.Pose.from_pose_msg(msg.pose)
@@ -271,7 +281,7 @@ class MonoSlamBridge(rclpy.node.Node):
 
         delta_p = delta.get_position()
         delta_e = delta.get_euler()
-        
+
         # Detect outliers
         if self.is_outlier(delta_p, delta_e):
             flags |= orca_msgs.msg.BridgeStatus.OK_OUTLIER
@@ -282,12 +292,11 @@ class MonoSlamBridge(rclpy.node.Node):
         # Find the pose of the base link (the ROV) in the map frame
         t_map_base = current_map.t_map_slam.mult(t_slam_base)
 
-        #----------
+        # ----------
         # Send a VISION_POSITION_DELTA (VPD) or VISION_POSITION_ESTIMATE (VPE) message to ArduSub
-        #----------
+        # ----------
 
         if self.use_vpe:
-
             t_map_base_ned = t_map_base.enu_to_ned_standard()
             e_frd = t_map_base_ned.get_euler()
 
@@ -298,11 +307,10 @@ class MonoSlamBridge(rclpy.node.Node):
                 t_map_base_ned.p[2],
                 e_frd[0],
                 e_frd[1],
-                e_frd[2]
+                e_frd[2],
             )
 
         else:
-
             # Convert FLU (forward, left, up) to FRD (forward, right, down)
             delta_p_frd = (delta_p[0], -delta_p[1], -delta_p[2])
             delta_e_frd = (delta_e[0], -delta_e[1], -delta_e[2])
@@ -312,7 +320,7 @@ class MonoSlamBridge(rclpy.node.Node):
                 1000000 // self.frame_rate,  # delta usec
                 delta_e_frd,
                 delta_p_frd,
-                0  # confidence (not used)
+                0,  # confidence (not used)
             )
 
         # Publish the map -> slam transform
@@ -348,7 +356,7 @@ class MonoSlamBridge(rclpy.node.Node):
             return
 
         self.scaled_map_pub.publish(slam.scale_cloud(msg, self.maps.current_map.scale))
-    
+
     def timer_callback(self):
         """Update ArduSub state and publish the results."""
 

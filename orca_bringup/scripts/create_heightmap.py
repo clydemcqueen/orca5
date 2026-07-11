@@ -56,7 +56,7 @@ def generate_fractal_noise(width, height, octaves, persistence):
     total_amplitude = 0.0
 
     for i, size in enumerate(octaves):
-        print(f"  - Layer {i + 1}/{len(octaves)} (feature size: {size}x{size})")
+        print(f'  - Layer {i + 1}/{len(octaves)} (feature size: {size}x{size})')
         # Add a noise layer, scaled by the current amplitude
         final_heightmap += generate_noise_layer(width, height, size) * amplitude
 
@@ -81,7 +81,7 @@ def generate_fractal_noise(width, height, octaves, persistence):
 
 
 def main():
-    print(f"Create {WIDTH}x{HEIGHT} heightmap...")
+    print(f'Create {WIDTH}x{HEIGHT} heightmap...')
 
     # Generate the fractal noise data (float values 0.0 - 1.0)
     heightmap_data = generate_fractal_noise(WIDTH, HEIGHT, OCTAVES, PERSISTENCE)
@@ -93,11 +93,11 @@ def main():
     img = Image.fromarray(img_data, mode='L')
 
     print(f"\nSave to '{FILENAME}'")
-    
+
     img.save(FILENAME)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # Ensure you have the required libraries:
     # pip install numpy pillow
     main()
