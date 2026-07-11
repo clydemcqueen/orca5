@@ -7,3 +7,14 @@ search_path = [
     "/home/clyde/workspaces/orca5_ws/install/orca_msgs/lib/python3.12/site-packages",
     "/home/clyde/workspaces/orca5_ws/install/orb_slam3_msgs/lib/python3.12/site-packages"
 ]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+# Could go either way, but 90% of the code is single, so settle on that
+quote-style = "single"
