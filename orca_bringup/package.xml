@@ -11,10 +11,13 @@
   <depend>orb_slam3_ros</depend>
   <depend>orca_bridge</depend>
 
-  <!-- Only required for simulation -->
+  <!-- Required for sim.launch.py -->
   <!-- <depend>ardupilot_gazebo</depend> -->
   <!-- <depend>ros_gz_bridge</depend> -->
   <!-- <depend>ros_gz_image</depend> -->
+
+  <!-- Required for cal.launch.py -->
+  <!-- <depend>image_pipeline</depend> -->
 
   <export>
     <build_type>ament_cmake</build_type>

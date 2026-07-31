@@ -10,7 +10,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -21,8 +21,8 @@ def generate_launch_description():
 
     # Modify this for your ROV
     mav_device = 'udpin:0.0.0.0:14550'
-    camera_name = 'sim_camera'
-    camera_info_url = 'file://' + os.path.join(orca_bringup_dir, 'config', 'sim_camera.yaml')
+    camera_name = 'dwe_camera'
+    camera_info_url = 'file://' + os.path.join(orca_bringup_dir, 'config', 'dwe_wet.yaml')
     gscam_config = 'udpsrc port=5600 ! application/x-rtp ! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
     skip = 2  # Reduce 30 fps to 10 fps
 
@@ -48,6 +48,11 @@ def generate_launch_description():
             description='Launch rviz?',
         ),
         DeclareLaunchArgument(
+            'gscam2',
+            default_value='True',
+            description='Launch gscam2?',
+        ),
+        DeclareLaunchArgument(
             'use_vpe',
             default_value='True',
             description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
@@ -66,7 +71,20 @@ def generate_launch_description():
                     'use_sim_time': False,
                 }
             ],
-            condition=IfCondition(LaunchConfiguration('orb')),
+            condition=IfCondition(LaunchConfiguration('gscam2')),
+        ),
+        # If we are replaying a bag, publish the camera_info message here
+        Node(
+            package='orca_bridge',
+            executable='camera_info_publisher.py',
+            output='screen',
+            parameters=[
+                {
+                    'camera_info_url': 'file://' + os.path.join(orca_bringup_dir, 'config', 'dwe_wet.yaml'),
+                    'frame_id': 'camera_sensor',
+                }
+            ],
+            condition=UnlessCondition(LaunchConfiguration('gscam2')),
         ),
         # Publish the static base_link -> camera_link transform.
         # Modify this for your vehicle
@@ -141,6 +159,7 @@ def generate_launch_description():
                 'orb': LaunchConfiguration('orb'),
                 'mav_device': mav_device,
                 'use_vpe': LaunchConfiguration('use_vpe'),
+                'settings_file': os.path.join(orca_bringup_dir, 'param', 'hw.yaml'),
             }.items(),
         ),
     ]

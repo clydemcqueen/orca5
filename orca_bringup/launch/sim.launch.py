@@ -160,6 +160,7 @@ def generate_launch_description():
                 'orb': LaunchConfiguration('orb'),
                 'mav_device': 'udpin:0.0.0.0:14551',
                 'use_vpe': LaunchConfiguration('use_vpe'),
+                'settings_file': os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
             }.items(),
         ),
         # Launch ArduSub w/ SIM_JSON. Make sure ardusub is on the $PATH. To use the heavy (6dof) model: specify

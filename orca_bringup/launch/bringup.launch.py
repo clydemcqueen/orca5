@@ -43,6 +43,11 @@ def generate_launch_description():
             default_value='True',
             description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
         ),
+        DeclareLaunchArgument(
+            'settings_file',
+            default_value=os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
+            description='Path to ORB_SLAM3 settings file',
+        ),
         Node(
             package='orb_slam3_ros',
             executable='orb_slam3_ros_mono',
@@ -50,7 +55,7 @@ def generate_launch_description():
             parameters=[
                 {
                     'use_sim_time': LaunchConfiguration('use_sim_time'),
-                    'settings_file': os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
+                    'settings_file': LaunchConfiguration('settings_file'),
                     'world_frame_id': 'world',
                 }
             ],
