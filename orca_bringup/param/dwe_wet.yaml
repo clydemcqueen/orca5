@@ -1,8 +1,7 @@
 %YAML:1.0
 ---
 
-# NOTE: This file is kept for backwards compatibility and is identical to dwe_wet.yaml.
-# Recommended: Use dwe_wet.yaml, dwe_dry.yaml, dwe_dry_1280_720.yaml, or dwe_dry_800_600.yaml instead.
+# This yaml file is opened by ORB_SLAM3
 
 File.version: "1.0"
 

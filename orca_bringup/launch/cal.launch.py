@@ -11,7 +11,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     camera_name = 'dwe_camera'
-    gscam_config = 'udpsrc port=5600 ! application/x-rtp ! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
+    gscam_config = 'udpsrc port=5600 ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264 ! rtpjitterbuffer ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
     skip = 2  # Reduce 30 fps to 10 fps
 
     nodes = [

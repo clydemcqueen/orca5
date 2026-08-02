@@ -1,8 +1,7 @@
 %YAML:1.0
 ---
 
-# NOTE: This file is kept for backwards compatibility and is identical to dwe_wet.yaml.
-# Recommended: Use dwe_wet.yaml, dwe_dry.yaml, dwe_dry_1280_720.yaml, or dwe_dry_800_600.yaml instead.
+# This yaml file is opened by ORB_SLAM3
 
 File.version: "1.0"
 
@@ -13,22 +12,22 @@ File.version: "1.0"
 Camera.type: "PinHole"
 
 # Camera calibration and distortion parameters (OpenCV) 
-Camera1.fx: 1262.8514986708965
-Camera1.fy: 1262.5093312469078
-Camera1.cx: 929.6583073711543
-Camera1.cy: 591.0263992455724
+Camera1.fx: 518.3579167307581
+Camera1.fy: 518.612580773718
+Camera1.cx: 389.2683968399588
+Camera1.cy: 329.0958654229124
 
-Camera1.k1: -0.3125250306454886
-Camera1.k2: 0.1441666725273654
-Camera1.p1: 0.0022009438999541614
-Camera1.p2: -0.0003420131256401285
+Camera1.k1: -0.3552500233247963
+Camera1.k2: 0.11170303974829691
+Camera1.p1: 0.0002970637052195902
+Camera1.p2: -0.0011146250064863036
 Camera1.k3: 0.0
 
-Camera.width: 1920
-Camera.height: 1080
+Camera.width: 800
+Camera.height: 600
 
-Camera.newWidth: 1920
-Camera.newHeight: 1080
+Camera.newWidth: 800
+Camera.newHeight: 600
 
 # Camera frames per second 
 Camera.fps: 10
