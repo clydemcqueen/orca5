@@ -22,8 +22,8 @@ def generate_launch_description():
     # Modify this for your ROV
     mav_device = 'udpin:0.0.0.0:14550'
     camera_name = 'dwe_camera'
-    camera_info_url = 'file://' + os.path.join(orca_bringup_dir, 'config', 'dwe_wet.yaml')
-    gscam_config = 'udpsrc port=5600 ! application/x-rtp ! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
+    camera_info_url = 'file://' + os.path.join(orca_bringup_dir, 'config', 'dwe_dry.yaml')
+    gscam_config = 'udpsrc port=5600 ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264 ! rtpjitterbuffer ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
     skip = 2  # Reduce 30 fps to 10 fps
 
     nodes = [
