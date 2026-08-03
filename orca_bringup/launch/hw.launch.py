@@ -105,6 +105,7 @@ def launch_setup(context, *args, **kwargs):
                 '/camera_pose',
                 '/ekf_pose',
                 '/ekf_status',
+                '/image_raw',
                 '/rosout',
                 '/slam_delta',
                 '/slam_pose',
@@ -148,8 +149,8 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 'camera_calibration_file',
-                default_value='dwe_dry_800_600.yaml',
-                description='ROS2 camera calibration file in orca_bringup/config (e.g. dwe_dry_800_600.yaml, dwe_wet.yaml)',
+                default_value='dwe_wet_800_600.yaml',
+                description='ROS2 camera calibration file in orca_bringup/config (default dwe_wet_800_600.yaml)',
             ),
             DeclareLaunchArgument(
                 'bag',
@@ -178,7 +179,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 'use_vpe',
-                default_value='True',
+                default_value='False',
                 description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
             ),
             OpaqueFunction(function=launch_setup),
