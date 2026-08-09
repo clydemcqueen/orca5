@@ -100,6 +100,7 @@ def launch_setup(context, *args, **kwargs):
                 'bag',
                 'record',
                 '--include-hidden-topics',
+                '/annotated_image',
                 '/bridge_status',
                 '/camera_info',
                 '/camera_pose',
