@@ -45,6 +45,13 @@ def generate_launch_description():
                     ('path', 'slam_path'),
                 ],
             ),
+            # Launch tracked_points_publisher node
+            Node(
+                package='orca_bridge',
+                executable='tracked_points_publisher.py',
+                name='tracked_points_publisher',
+                output='screen',
+            ),
             # Some old bags do not have static transforms, add them conditionally
             Node(
                 package='tf2_ros',

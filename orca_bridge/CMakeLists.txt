@@ -18,6 +18,7 @@ install(
   scripts/slam_bridge.py
   scripts/camera_info_publisher.py
   scripts/pose_to_path.py
+  scripts/tracked_points_publisher.py
   DESTINATION lib/${PROJECT_NAME})
 
 # Install Python modules
