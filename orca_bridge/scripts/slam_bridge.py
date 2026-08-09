@@ -116,7 +116,7 @@ class MonoSlamBridge(rclpy.node.Node):
     def publish_static_transforms(self):
         """Publish static transforms. Call this once."""
 
-        tf_static_broadcaster = tf2_ros.StaticTransformBroadcaster(self)
+        self.tf_static_broadcaster = tf2_ros.StaticTransformBroadcaster(self)
 
         tf_msg = geometry_msgs.msg.TransformStamped()
         tf_msg.header.stamp = self.get_clock().now().to_msg()
@@ -124,12 +124,12 @@ class MonoSlamBridge(rclpy.node.Node):
         tf_msg.header.frame_id = 'slam'
         tf_msg.child_frame_id = 'world'
         tf_msg.transform = self.t_slam_world.to_transform_msg()
-        tf_static_broadcaster.sendTransform(tf_msg)
+        self.tf_static_broadcaster.sendTransform(tf_msg)
 
         tf_msg.header.frame_id = 'camera_link'
         tf_msg.child_frame_id = 'camera_sensor'
         tf_msg.transform = geometry.Pose.T_FLU_OPENCV.to_transform_msg()
-        tf_static_broadcaster.sendTransform(tf_msg)
+        self.tf_static_broadcaster.sendTransform(tf_msg)
 
     def set_ekf_sources(self, slam_tracking: bool):
         """
