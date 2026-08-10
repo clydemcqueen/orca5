@@ -41,7 +41,7 @@ def rf_distance(msg: orb_slam3_msgs.msg.SlamStatus) -> float:
 
     if len(z_values) < min_points:
         # print(f'Too few points inside the sonar beam: {len(z_values)} < {min_points}')
-        return 0
+        return 0.0
 
     # The median is robust to outliers
     return float(np.percentile(np.array(z_values), 50.0))
