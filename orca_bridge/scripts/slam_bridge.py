@@ -281,7 +281,7 @@ class MonoSlamBridge(rclpy.node.Node):
         delta_p = delta.get_position()
         delta_e = delta.get_euler()
 
-        # Detect outliers
+        # Detect outliers, but allow them
         if self.is_outlier(delta_p, delta_e):
             flags |= orca_msgs.msg.BridgeStatus.OK_OUTLIER
 

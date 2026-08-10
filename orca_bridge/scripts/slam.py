@@ -86,7 +86,7 @@ class LowPassFilter:
 class SlamMap:
     """A single SLAM map"""
 
-    def __init__(self, map_id: int, sonar_rf: float, slam_rf: float, t_map_base: geometry.Pose):
+    def __init__(self, map_id: int, sonar_rf: float, slam_rf: float, t_map_base: geometry.Pose, logger):
         # The map id from ORB_SLAM3
         self.map_id = map_id
 
@@ -97,7 +97,7 @@ class SlamMap:
         # Scale factor for this map. Default to 1.0 until we get a good reading, then use a low pass filter
         self.scale = 1.0
         self.scale_filter = LowPassFilter(0.1)
-        self.update_scale(sonar_rf, slam_rf)
+        self.update_scale(sonar_rf, slam_rf, logger)
 
         # Initialize map -> slam from map -> base
         self.t_map_slam = t_map_base
@@ -105,13 +105,27 @@ class SlamMap:
         # The latest pose of the base link in the slam frame
         self.t_slam_base: geometry.Pose | None = None
 
-    def update_scale(self, sonar_rf: float, slam_rf: float):
+    def update_scale(self, sonar_rf: float, slam_rf: float, logger):
         self.sonar_rf = sonar_rf
         self.slam_rf = slam_rf
 
-        # Drop bad readings
-        if slam_rf > 0.05:
-            self.scale = self.scale_filter.update(sonar_rf / slam_rf)
+        # Hard limits
+        if slam_rf < 0.1 or slam_rf > 10.0:
+            logger.warn(f'slam_rf too low/high, dropping: {slam_rf:.3f}m')
+            return
+        if sonar_rf < 0.1 or sonar_rf > 10.0:
+            logger.warn(f'sonar_rf too low/high, dropping: {sonar_rf:.3f}m')
+            return
+
+        # Try to prevent sonar reflections
+        instant_scale = sonar_rf / slam_rf
+        if self.scale_filter.value is not None:
+            expected_sonar_rf = slam_rf * self.scale
+            if abs(sonar_rf - expected_sonar_rf) > 0.3 * expected_sonar_rf:
+                logger.warn(f'sonar_rf jumped, dropping: {sonar_rf:.3f}m')
+                return
+
+        self.scale = self.scale_filter.update(instant_scale)
 
     def update_pose(self, t_slam_base: geometry.Pose):
         self.t_slam_base = t_slam_base
@@ -143,7 +157,7 @@ class SlamMaps:
         if self.current_map is None or msg.map_id not in self.maps:
             logger.info(f'Create map {msg.map_id}')
             t_map_base = sub.t_map_base_ned.ned_to_enu_frame()  # Use axes-only conversion
-            self.maps[msg.map_id] = SlamMap(msg.map_id, sonar_rf_distance, slam_rf_distance, t_map_base)
+            self.maps[msg.map_id] = SlamMap(msg.map_id, sonar_rf_distance, slam_rf_distance, t_map_base, logger)
             self.current_map = self.maps[msg.map_id]
         else:
             if self.current_map.map_id != msg.map_id:
@@ -151,4 +165,4 @@ class SlamMaps:
                 # Sadly, we lose the old pose and scale information.
                 logger.error(f'Switch to map {msg.map_id} -- WTF')
                 self.current_map = self.maps[msg.map_id]
-            self.current_map.update_scale(sonar_rf_distance, slam_rf_distance)
+            self.current_map.update_scale(sonar_rf_distance, slam_rf_distance, logger)
