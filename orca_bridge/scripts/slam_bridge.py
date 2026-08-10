@@ -319,7 +319,7 @@ class MonoSlamBridge(rclpy.node.Node):
                 1000000 // self.frame_rate,  # delta usec
                 delta_e_frd,
                 delta_p_frd,
-                0,  # confidence (not used)
+                100,  # confidence, assume 100%
             )
 
         # Publish the map -> slam transform
