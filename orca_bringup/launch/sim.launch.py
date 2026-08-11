@@ -115,6 +115,17 @@ def generate_launch_description():
                 'camera_link',
             ],
         ),
+        # Launch pose_to_path node for slam_path topic
+        Node(
+            package='orca_bridge',
+            executable='pose_to_path.py',
+            name='pose_to_path',
+            output='screen',
+            remappings=[
+                ('pose', 'slam_pose'),
+                ('path', 'slam_path'),
+            ],
+        ),
         # Bag useful topics
         ExecuteProcess(
             cmd=[
@@ -131,6 +142,7 @@ def generate_launch_description():
                 '/model/orca5/odometry',
                 '/rosout',
                 '/slam_delta',
+                '/slam_path',
                 '/slam_pose',
                 '/slam_status',
                 '/system_time',

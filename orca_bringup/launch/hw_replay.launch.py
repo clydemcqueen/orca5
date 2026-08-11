@@ -26,6 +26,11 @@ def generate_launch_description():
                 default_value='False',
                 description='Publish missing static transforms for older bags',
             ),
+            DeclareLaunchArgument(
+                'add_pose_to_path',
+                default_value='False',
+                description='Launch pose_to_path node?',
+            ),
             # Launch rviz2 with hw_replay.rviz
             Node(
                 package='rviz2',
@@ -44,6 +49,7 @@ def generate_launch_description():
                     ('pose', 'slam_pose'),
                     ('path', 'slam_path'),
                 ],
+                condition=IfCondition(LaunchConfiguration('add_pose_to_path')),
             ),
             # Launch tracked_points_publisher node
             Node(
