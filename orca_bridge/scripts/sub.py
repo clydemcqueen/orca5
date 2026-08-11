@@ -15,13 +15,19 @@ class Sub:
         'DISTANCE_SENSOR',  # Sonar rangefinder
         'EKF_STATUS_REPORT',  # Filter status
         'GLOBAL_POSITION_INT',  # Altitude above home, use if filter_status == ALT_ONLY
+        'HEARTBEAT',  # Heartbeat
         'LOCAL_POSITION_NED',  # Position, use if filter_status == HORIZ_REL
         'STATUSTEXT',  # Messages
+        'SYSTEM_TIME',  # System time
     ]
 
     def __init__(self):
+        # Republish MAVLink messages on ros2 topics
+        self.ekf_status_report = orca_msgs.msg.EkfStatusReport()
+        self.heartbeat = orca_msgs.msg.Heartbeat()
+        self.system_time = orca_msgs.msg.SystemTime()
+
         self.last_heartbeat_s = 0.0
-        self.ekf_status_report = orca_msgs.msg.FilterStatus()  # Empty message
         self.ekf_status_time: float | None = None
         self.t_map_base_ned = geometry.Pose()
         self.sonar_rf_distance: float | None = None
@@ -66,13 +72,18 @@ class Sub:
             elif msg_type == 'GLOBAL_POSITION_INT':
                 if self.ekf_const_pos():
                     self.t_map_base_ned.set_altitude(-msg.relative_alt / 1e3)  # Height above home, flip sign for NED
+            elif msg_type == 'HEARTBEAT':
+                if msg.get_srcSystem() == conn.target_system and msg.get_srcComponent() == apm.MAV_COMP_ID_AUTOPILOT1:
+                    self.heartbeat = msg
             elif msg_type == 'LOCAL_POSITION_NED':
                 self.t_map_base_ned.set_position(msg.x, msg.y, msg.z)
             elif msg_type == 'STATUSTEXT':
                 if msg.text == 'script button 1':
                     self.button1 = True
+            elif msg_type == 'SYSTEM_TIME':
+                self.system_time = msg
 
         if self.ekf_status_time is not None and now_s - self.ekf_status_time > Sub.FILTER_TIMEOUT_S:
             logger.warn('EKF timeout')
-            self.ekf_status_report = orca_msgs.msg.FilterStatus()
+            self.ekf_status_report = orca_msgs.msg.EkfStatusReport()
             self.ekf_status_time = None
