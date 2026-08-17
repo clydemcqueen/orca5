@@ -1,0 +1,31 @@
+# ArduSub parameters for the orca5_1 ROV
+
+# Disable GPS, enable external vision
+GPS1_TYPE 0                 # Disable simulated GPS
+VISO_TYPE 1                 # Enable external vision
+
+# EK3_SRC1 parameters are used when slam_tracking=True:
+EK3_SRC1_POSXY 6            # External vision
+EK3_SRC1_VELXY 6            # External vision
+EK3_SRC1_YAW 1              # Compass
+
+# EK3_SRC2 parameters are used when slam_tracking=False:
+EK3_SRC2_POSXY 0            # No sensor
+EK3_SRC2_VELXY 0            # No sensor
+EK3_SRC2_YAW 1              # Compass
+
+# Do not enable "use all velocities"
+EK3_SRC_OPTIONS 0
+
+# Enable Lua scripting and assign joystick buttons
+SCR_ENABLE 1
+BTN0_SFUNCTION 108  # shift A
+BTN1_SFUNCTION 109  # shift B
+BTN2_SFUNCTION 110  # shift X
+BTN3_SFUNCTION 111  # shift Y
+
+# SlamBridge uses tf transforms to generate poses in the sub body frame, so set these to "no transform"
+VISO_ORIENT 0
+VISO_POS_X 0
+VISO_POS_Y 0
+VISO_POS_Z 0

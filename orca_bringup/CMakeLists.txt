@@ -44,6 +44,7 @@ install(
   models
   param
   rviz
+  scripts
   worlds
   DESTINATION share/${PROJECT_NAME})
 
