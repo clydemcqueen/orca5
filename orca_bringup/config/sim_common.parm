@@ -137,7 +137,7 @@ VISO_TYPE 1                 # Enable external vision
 # EK3_SRC1 parameters are used when slam_tracking=True:
 EK3_SRC1_POSXY 6            # External vision
 EK3_SRC1_VELXY 6            # External vision
-# EK3_SRC1_YAW ?            # Defer to sub_vpd.parm and sub_vpe.parm
+# EK3_SRC1_YAW ?            # Defer to sim_vpd.parm and sim_vpe.parm
 
 # EK3_SRC2 parameters are used when slam_tracking=False:
 EK3_SRC2_POSXY 0            # No sensor

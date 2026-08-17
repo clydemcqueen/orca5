@@ -18,9 +18,9 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     orca_bringup_dir = get_package_share_directory('orca_bringup')
-    sub_common_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub_common.parm')
-    sub_vpd_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub_vpd.parm')
-    sub_vpe_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub_vpe.parm')
+    sub_common_parm_file = os.path.join(orca_bringup_dir, 'config', 'sim_common.parm')
+    sub_vpd_parm_file = os.path.join(orca_bringup_dir, 'config', 'sim_vpd.parm')
+    sub_vpe_parm_file = os.path.join(orca_bringup_dir, 'config', 'sim_vpe.parm')
     sub_vpd_parm_files = f'{sub_common_parm_file},{sub_vpd_parm_file}'
     sub_vpe_parm_files = f'{sub_common_parm_file},{sub_vpe_parm_file}'
 
