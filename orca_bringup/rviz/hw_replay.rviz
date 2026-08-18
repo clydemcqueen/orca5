@@ -5,12 +5,13 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /RobotModel1
         - /TF1
+        - /TF1/Frames1
         - /TF1/Tree1
         - /PointCloud21
-        - /PointCloud21/Status1
       Splitter Ratio: 0.5
-    Tree Height: 376
+    Tree Height: 364
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -32,6 +33,77 @@ Panels:
 Visualization Manager:
   Class: ""
   Displays:
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        camera_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        ping_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        thruster1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        thruster2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        thruster3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        thruster4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        thruster5:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        thruster6:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: RobotModel
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
     - Alpha: 0.5
       Cell Size: 1
       Class: rviz_default_plugins/Grid
@@ -74,13 +146,27 @@ Visualization Manager:
         base_link:
           Value: false
         camera_link:
-          Value: false
-        camera_sensor:
           Value: true
+        camera_sensor:
+          Value: false
         map:
           Value: true
+        ping_link:
+          Value: false
         slam:
           Value: true
+        thruster1:
+          Value: false
+        thruster2:
+          Value: false
+        thruster3:
+          Value: false
+        thruster4:
+          Value: false
+        thruster5:
+          Value: false
+        thruster6:
+          Value: false
         world:
           Value: true
       Marker Scale: 1
@@ -94,6 +180,20 @@ Visualization Manager:
             camera_link:
               camera_sensor:
                 {}
+            ping_link:
+              {}
+            thruster1:
+              {}
+            thruster2:
+              {}
+            thruster3:
+              {}
+            thruster4:
+              {}
+            thruster5:
+              {}
+            thruster6:
+              {}
           slam:
             world:
               {}
@@ -237,7 +337,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: world
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:
@@ -280,25 +380,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 24.415761947631836
+      Distance: 25.268529891967773
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.460575819015503
-        Y: -0.9725574254989624
-        Z: 2.9042036533355713
+        X: 0.001305441022850573
+        Y: 1.032366156578064
+        Z: 0.7775935530662537
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.1447964906692505
+      Pitch: 1.5547963380813599
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.6435792446136475
+      Yaw: 1.5635919570922852
     Saved: ~
 Window Geometry:
   Displays:
@@ -308,7 +408,7 @@ Window Geometry:
   Hide Right Dock: false
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000034300000774fc020000000afb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006e00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afc00000047000002380000011501000023fa000000010100000002fb0000000a005600690065007700730100000000ffffffff0000010200fffffffb000000100044006900730070006c0061007900730100000000000003710000016000fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d00610067006501000002860000028e0000001900fffffffb0000000a0049006d006100670065010000051b000002a00000001900ffffff000000010000029e0000079cfc0200000002fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000a3900000040fc0100000002fb0000000800540069006d0065010000000000000a39000002dc00fffffffb0000000800540069006d00650100000000000004500000000000000000000006ef0000077400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000034300000774fc020000000afb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006e00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afc000000470000022c0000011501000023fa000000010100000002fb0000000a005600690065007700730100000000ffffffff0000010200fffffffb000000100044006900730070006c0061007900730100000000000003710000016000fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d006100670065010000027a0000029a0000001900fffffffb0000000a0049006d006100670065010000051b000002a00000001900ffffff000000010000029e0000079cfc0200000002fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000a3900000040fc0100000002fb0000000800540069006d0065010000000000000a39000002dc00fffffffb0000000800540069006d00650100000000000004500000000000000000000006ef0000077400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -318,5 +418,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 2617
-  X: 4430
-  Y: 31
+  X: 1184
+  Y: 40

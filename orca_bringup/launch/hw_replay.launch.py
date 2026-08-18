@@ -18,9 +18,17 @@ from launch_ros.actions import Node
 def generate_launch_description():
     orca_bringup_dir = get_package_share_directory('orca_bringup')
     rviz_config_file = os.path.join(orca_bringup_dir, 'rviz', 'hw_replay.rviz')
+    urdf_file_path = os.path.join(orca_bringup_dir, 'urdf', 'orca5_1.urdf')
+    with open(urdf_file_path, 'r') as infp:
+        robot_description = infp.read()
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                'fix_desc',
+                default_value='False',
+                description='Launch robot_state_publisher to publish robot_description for older bags',
+            ),
             DeclareLaunchArgument(
                 'fix_tf',
                 default_value='False',
@@ -59,6 +67,7 @@ def generate_launch_description():
                 output='screen',
             ),
             # Some old bags do not have static transforms, add them conditionally
+            # TODO remove these fixes
             Node(
                 package='tf2_ros',
                 executable='static_transform_publisher',
@@ -127,6 +136,21 @@ def generate_launch_description():
                     'world',
                 ],
                 condition=IfCondition(LaunchConfiguration('fix_tf')),
+            ),
+            # Publish robot description topic for older bags. This will also publish tf_static.
+            # The only duplicate is base_link -> camera_link, but the transform should be the same.
+            # TODO remove this fix
+            Node(
+                package='robot_state_publisher',
+                executable='robot_state_publisher',
+                name='robot_state_publisher',
+                output='screen',
+                parameters=[
+                    {
+                        'robot_description': robot_description,
+                    }
+                ],
+                condition=IfCondition(LaunchConfiguration('fix_desc')),
             ),
         ]
     )

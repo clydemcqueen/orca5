@@ -133,6 +133,7 @@ def generate_launch_description():
                 'bag',
                 'record',
                 '--include-hidden-topics',
+                '/annotated_image',
                 '/bridge_status',
                 '/camera_info',
                 '/camera_pose',

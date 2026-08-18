@@ -45,6 +45,7 @@ install(
   param
   rviz
   scripts
+  urdf
   worlds
   DESTINATION share/${PROJECT_NAME})
 

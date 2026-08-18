@@ -4,7 +4,6 @@
 Launch orca5 on a topside computer and connect to a BlueROV2.
 """
 
-import math
 import os
 
 from ament_index_python.packages import get_package_share_directory
@@ -34,7 +33,22 @@ def launch_setup(context, *args, **kwargs):
     gscam_config = 'udpsrc port=5600 ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264 ! rtpjitterbuffer ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
     skip = 2  # Reduce 30 fps to 10 fps
 
+    urdf_file_path = os.path.join(orca_bringup_dir, 'urdf', 'orca5_1.urdf')
+    with open(urdf_file_path, 'r') as infp:
+        robot_description = infp.read()
+
     return [
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            output='screen',
+            parameters=[
+                {
+                    'robot_description': robot_description,
+                    'use_sim_time': False,
+                }
+            ],
+        ),
         Node(
             package='gscam2',
             executable='gscam_main',
@@ -63,35 +77,6 @@ def launch_setup(context, *args, **kwargs):
                 }
             ],
             condition=UnlessCondition(LaunchConfiguration('gscam2')),
-        ),
-        # Publish the static base_link -> camera_link transform.
-        # Modify this for your vehicle
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            parameters=[
-                {
-                    'use_sim_time': False,
-                }
-            ],
-            arguments=[
-                '--x',
-                '0',
-                '--y',
-                '0',
-                '--z',
-                '0',
-                '--roll',
-                '0',
-                '--pitch',
-                str(math.pi / 2),
-                '--yaw',
-                '0',
-                '--frame-id',
-                'base_link',
-                '--child-frame-id',
-                'camera_link',
-            ],
         ),
         # Launch pose_to_path node for slam_path topic
         Node(
