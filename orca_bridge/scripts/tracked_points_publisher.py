@@ -14,8 +14,13 @@ class TrackedPointsPublisher(Node):
         self.publisher_ = self.create_publisher(PointCloud2, '/tracked_points', 10)
 
     def listener_callback(self, msg: SlamStatus):
-        # Publish the tracked_points PointCloud2 directly
-        self.publisher_.publish(msg.tracked_points)
+        # Publish the tracked_points PointCloud2.
+        # Zero out the timestamp so RViz/TF uses the latest available transform,
+        # avoiding ExtrapolationExceptions caused by SLAM processing latency in recorded bags.
+        points_msg = msg.tracked_points
+        points_msg.header.stamp.sec = 0
+        points_msg.header.stamp.nanosec = 0
+        self.publisher_.publish(points_msg)
 
 
 def main(args=None):
