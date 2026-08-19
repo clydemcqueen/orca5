@@ -81,6 +81,7 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
+                    'use_sim_time': True,
                     'camera_info_url': 'file://' + os.path.join(orca_bringup_dir, 'config', 'sim_camera.yaml'),
                     'frame_id': 'camera_sensor',
                 }
@@ -132,7 +133,9 @@ def generate_launch_description():
                 'ros2',
                 'bag',
                 'record',
+                '--use-sim-time',
                 '--include-hidden-topics',
+                '/clock',
                 '/annotated_image',
                 '/bridge_status',
                 '/camera_info',
