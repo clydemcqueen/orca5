@@ -5,6 +5,7 @@ import numpy as np
 import orb_slam3_msgs.msg
 import sensor_msgs.msg
 import sub
+import transforms3d
 from sensor_msgs_py import point_cloud2
 
 
@@ -23,28 +24,32 @@ def rf_distance(msg: orb_slam3_msgs.msg.SlamStatus) -> float:
     max_tan_theta_sq = math.tan(math.radians(half_beam_angle_d)) ** 2
     min_points = 15
 
+    if msg.tracked_points.width * msg.tracked_points.height < min_points:
+        return 0.0
+
+    points = point_cloud2.read_points_numpy(msg.tracked_points, field_names=['x', 'y', 'z'], skip_nans=True)
+    if points.shape[0] < min_points:
+        return 0.0
+
     # Get the pose of the world in the camera frame
     t_camera_world = geometry.Pose.from_pose_msg(msg.pose).inverse()
 
-    z_values = []
-    for p in point_cloud2.read_points(msg.tracked_points, field_names=['x', 'y', 'z'], skip_nans=True):
-        # Move the tracked points from the world frame to the camera frame
-        point_f_world = geometry.Pose()
-        point_f_world.set_position(*p)
-        point_f_camera = t_camera_world.mult(point_f_world)
+    # Move the tracked points from the world frame to the camera frame
+    r_camera_world = transforms3d.quaternions.quat2mat(t_camera_world.q)
+    p_camera_world = np.asarray(t_camera_world.p)
+    points_camera = points @ r_camera_world.T + p_camera_world
 
-        # Reject z values that are outside the beam
-        max_xy_dist_sq = point_f_camera.p[2] ** 2 * max_tan_theta_sq
-        xy_dist_sq = point_f_camera.p[0] ** 2 + point_f_camera.p[1] ** 2
-        if xy_dist_sq <= max_xy_dist_sq:
-            z_values.append(point_f_camera.p[2])
+    # Reject z values that are outside the beam
+    xy_dist_sq = points_camera[:, 0] ** 2 + points_camera[:, 1] ** 2
+    max_xy_dist_sq = (points_camera[:, 2] ** 2) * max_tan_theta_sq
+    z_in_beam = points_camera[xy_dist_sq <= max_xy_dist_sq, 2]
 
-    if len(z_values) < min_points:
-        # print(f'Too few points inside the sonar beam: {len(z_values)} < {min_points}')
+    if z_in_beam.shape[0] < min_points:
+        # print(f'Too few points inside the sonar beam: {z_in_beam.shape[0]} < {min_points}')
         return 0.0
 
     # The median is robust to outliers
-    return float(np.percentile(np.array(z_values), 50.0))
+    return float(np.percentile(z_in_beam, 50.0))
 
 
 class LowPassFilter:
