@@ -16,7 +16,6 @@ import rclpy
 import rclpy.node
 import rclpy.serialization
 import rclpy.time
-import sensor_msgs.msg
 import slam
 import std_srvs.srv
 import sub
@@ -90,15 +89,14 @@ class MonoSlamBridge(rclpy.node.Node):
         )
 
         # Subscriptions
-        self.map_sub = self.create_subscription(sensor_msgs.msg.PointCloud2, 'map_points', self.map_callback, 10)
-        self.slam_sub = self.create_subscription(orb_slam3_msgs.msg.SlamStatus, 'slam_status', self.slam_callback, 10)
+        # Set queue length to 1 so we don't process stale data
+        self.slam_sub = self.create_subscription(orb_slam3_msgs.msg.SlamStatus, 'slam_status', self.slam_callback, 1)
 
         # Publishers
         self.bridge_status_pub = self.create_publisher(orca_msgs.msg.BridgeStatus, 'bridge_status', 10)
         self.ekf_pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'ekf_pose', 10)
         self.ekf_status_pub = self.create_publisher(orca_msgs.msg.EkfStatusReport, 'ekf_status_report', 10)
         self.heartbeat_pub = self.create_publisher(orca_msgs.msg.Heartbeat, 'heartbeat', 10)
-        self.scaled_map_pub = self.create_publisher(sensor_msgs.msg.PointCloud2, 'map_points/scaled', 10)
         self.slam_delta_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'slam_delta', 10)
         self.slam_pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'slam_pose', 10)
         self.system_time_pub = self.create_publisher(orca_msgs.msg.SystemTime, 'system_time', 10)
@@ -348,15 +346,6 @@ class MonoSlamBridge(rclpy.node.Node):
 
         # Publish a status message
         self.publish_bridge_status(msg.header.stamp, flags)
-
-    def map_callback(self, msg: sensor_msgs.msg.PointCloud2):
-        """Scale the map and republish it."""
-
-        if self.maps.current_map is None:
-            self.get_logger().warn('No map, dropping point cloud', throttle_duration_sec=1.0)
-            return
-
-        self.scaled_map_pub.publish(slam.scale_cloud(msg, self.maps.current_map.scale))
 
     def timer_callback(self):
         """Update ArduSub state and publish the results."""

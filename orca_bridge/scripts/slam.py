@@ -111,10 +111,10 @@ class SlamMap:
 
         # Hard limits
         if slam_rf < 0.1 or slam_rf > 10.0:
-            logger.warn(f'slam_rf too low/high, dropping: {slam_rf:.3f}m')
+            # logger.warn(f'slam_rf too low/high, dropping: {slam_rf:.3f}m')
             return
         if sonar_rf < 0.1 or sonar_rf > 10.0:
-            logger.warn(f'sonar_rf too low/high, dropping: {sonar_rf:.3f}m')
+            # logger.warn(f'sonar_rf too low/high, dropping: {sonar_rf:.3f}m')
             return
 
         # Try to prevent sonar reflections
