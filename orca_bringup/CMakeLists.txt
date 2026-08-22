@@ -44,7 +44,6 @@ install(
   models
   param
   rviz
-  scripts
   urdf
   worlds
   DESTINATION share/${PROJECT_NAME})
