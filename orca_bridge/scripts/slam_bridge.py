@@ -52,9 +52,6 @@ class MonoSlamBridge(rclpy.node.Node):
         # Expected frame rate
         self.frame_rate = self.declare_parameter('frame_rate', 10).get_parameter_value().integer_value
 
-        # Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?
-        self.use_vpe = self.declare_parameter('use_vpe', False).get_parameter_value().bool_value
-
         # Max delta for position and rotation to be considered an outlier
         self.max_delta_pos = self.declare_parameter('max_delta_pos', 0.5).get_parameter_value().double_value
         self.max_delta_rot = self.declare_parameter('max_delta_rot', math.pi / 6).get_parameter_value().double_value
@@ -292,35 +289,20 @@ class MonoSlamBridge(rclpy.node.Node):
         t_map_base = current_map.t_map_slam.mult(t_slam_base)
 
         # ----------
-        # Send a VISION_POSITION_DELTA (VPD) or VISION_POSITION_ESTIMATE (VPE) message to ArduSub
+        # Send a VISION_POSITION_DELTA (VPD) message to ArduSub
         # ----------
 
-        if self.use_vpe:
-            t_map_base_ned = t_map_base.enu_to_ned_standard()
-            e_frd = t_map_base_ned.get_euler()
+        # Convert FLU (forward, left, up) to FRD (forward, right, down)
+        delta_p_frd = (delta_p[0], -delta_p[1], -delta_p[2])
+        delta_e_frd = (delta_e[0], -delta_e[1], -delta_e[2])
 
-            self.conn.mav.vision_position_estimate_send(
-                0,  # time_usec (not used)
-                t_map_base_ned.p[0],
-                t_map_base_ned.p[1],
-                t_map_base_ned.p[2],
-                e_frd[0],
-                e_frd[1],
-                e_frd[2],
-            )
-
-        else:
-            # Convert FLU (forward, left, up) to FRD (forward, right, down)
-            delta_p_frd = (delta_p[0], -delta_p[1], -delta_p[2])
-            delta_e_frd = (delta_e[0], -delta_e[1], -delta_e[2])
-
-            self.conn.mav.vision_position_delta_send(
-                0,  # time_usec (not used)
-                1000000 // self.frame_rate,  # delta usec
-                delta_e_frd,
-                delta_p_frd,
-                100,  # confidence, assume 100%
-            )
+        self.conn.mav.vision_position_delta_send(
+            0,  # time_usec (not used)
+            1000000 // self.frame_rate,  # delta usec
+            delta_e_frd,
+            delta_p_frd,
+            100,  # confidence, assume 100%
+        )
 
         # Publish the map -> slam transform
         tf_msg = geometry_msgs.msg.TransformStamped()

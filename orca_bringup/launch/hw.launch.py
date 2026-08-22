@@ -137,7 +137,6 @@ def launch_setup(context, *args, **kwargs):
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
                 'mav_device': mav_device,
-                'use_vpe': LaunchConfiguration('use_vpe'),
                 'settings_file': param_file_path,
             }.items(),
         ),
@@ -176,11 +175,6 @@ def generate_launch_description():
                 'gscam2',
                 default_value='True',
                 description='Launch gscam2?',
-            ),
-            DeclareLaunchArgument(
-                'use_vpe',
-                default_value='False',
-                description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
             ),
             OpaqueFunction(function=launch_setup),
         ]

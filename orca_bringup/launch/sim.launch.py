@@ -18,11 +18,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     orca_bringup_dir = get_package_share_directory('orca_bringup')
-    sub_common_parm_file = os.path.join(orca_bringup_dir, 'config', 'sim_common.parm')
-    sub_vpd_parm_file = os.path.join(orca_bringup_dir, 'config', 'sim_vpd.parm')
-    sub_vpe_parm_file = os.path.join(orca_bringup_dir, 'config', 'sim_vpe.parm')
-    sub_vpd_parm_files = f'{sub_common_parm_file},{sub_vpd_parm_file}'
-    sub_vpe_parm_files = f'{sub_common_parm_file},{sub_vpe_parm_file}'
+    sub_parm_file = os.path.join(orca_bringup_dir, 'config', 'sim.parm')
 
     nodes = [
         DeclareLaunchArgument('ardusub', default_value='True', description='Launch ardusub?'),
@@ -45,11 +41,6 @@ def generate_launch_description():
             'rviz',
             default_value='True',
             description='Launch rviz?',
-        ),
-        DeclareLaunchArgument(
-            'use_vpe',
-            default_value='False',
-            description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
         ),
         # Launch Gazebo
         ExecuteProcess(
@@ -177,7 +168,6 @@ def generate_launch_description():
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
                 'mav_device': 'udpin:0.0.0.0:14551',
-                'use_vpe': LaunchConfiguration('use_vpe'),
                 'settings_file': os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
             }.items(),
         ),
@@ -195,7 +185,7 @@ def generate_launch_description():
                 '--home',
                 '47.6302,-122.3982391,-0.1,0',
                 '--defaults',
-                sub_vpe_parm_files if LaunchConfiguration('use_vpe') else sub_vpd_parm_files,
+                sub_parm_file,
             ],
             output='screen',
             condition=IfCondition(LaunchConfiguration('ardusub')),
