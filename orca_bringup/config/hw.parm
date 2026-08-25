@@ -29,3 +29,6 @@ VISO_ORIENT 0
 VISO_POS_X 0
 VISO_POS_Y 0
 VISO_POS_Z 0
+
+# Account for SLAM pipeline delays
+VISO_DELAY_MS 200
