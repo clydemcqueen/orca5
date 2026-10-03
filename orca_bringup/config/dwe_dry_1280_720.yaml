@@ -1,0 +1,23 @@
+image_width: 1280
+image_height: 720
+camera_name: dwe_camera
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [631.9957325969306, 0.0, 655.0026280104994, 0.0, 633.2464758925671, 404.1839752947978,
+    0.0, 0.0, 1.0]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.3186999656446265, 0.0735082153542564, -0.001648460762871626, -0.00334619591513526,
+    0.0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [631.9957325969306, 0.0, 655.0026280104994, 0.0, 0.0, 633.2464758925671, 404.1839752947978,
+    0.0, 0.0, 0.0, 1.0, 0.0]

@@ -11,8 +11,13 @@ colcon --log-level DEBUG test --packages-select orca_bridge --event-handlers=con
 import math
 import unittest
 
+import numpy as np
 import transforms3d
 from geometry import Pose
+from orb_slam3_msgs.msg import SlamStatus
+from sensor_msgs_py import point_cloud2
+from slam import rf_distance
+from std_msgs.msg import Header
 
 
 class TestPoseCoordinateConversions(unittest.TestCase):
@@ -282,6 +287,74 @@ class TestPoseCoordinateConversions(unittest.TestCase):
         # Roundtrip
         pose_back = pose_enu.enu_to_ned_frame()
         self.assertPoseAlmostEqual(pose_ned, pose_back)
+
+
+class TestRfDistance(unittest.TestCase):
+    """Test suite for rf_distance calculation."""
+
+    def test_rf_distance_fewer_than_min_points(self):
+        msg = SlamStatus()
+        msg.pose.orientation.w = 1.0
+        # 10 points (< 15 min_points)
+        pts = np.zeros((10, 3), dtype=np.float32)
+        pts[:, 2] = 2.0
+        msg.tracked_points = point_cloud2.create_cloud_xyz32(Header(), pts)
+        self.assertEqual(rf_distance(msg), 0.0)
+
+    def test_rf_distance_empty_cloud(self):
+        msg = SlamStatus()
+        msg.pose.orientation.w = 1.0
+        pts = np.zeros((0, 3), dtype=np.float32)
+        msg.tracked_points = point_cloud2.create_cloud_xyz32(Header(), pts)
+        self.assertEqual(rf_distance(msg), 0.0)
+
+    def test_rf_distance_points_inside_beam(self):
+        msg = SlamStatus()
+        msg.pose.orientation.w = 1.0
+        # 20 points right along z axis at distance 3.0
+        pts = np.zeros((20, 3), dtype=np.float32)
+        pts[:, 2] = 3.0
+        msg.tracked_points = point_cloud2.create_cloud_xyz32(Header(), pts)
+        self.assertAlmostEqual(rf_distance(msg), 3.0, places=4)
+
+    def test_rf_distance_points_outside_beam(self):
+        msg = SlamStatus()
+        msg.pose.orientation.w = 1.0
+        # 20 points far off to the side (outside the 40 deg cone)
+        pts = np.zeros((20, 3), dtype=np.float32)
+        pts[:, 0] = 10.0  # x = 10
+        pts[:, 2] = 2.0  # z = 2 -> cone radius is 2 * tan(20 deg) ~ 0.728 < 10
+        msg.tracked_points = point_cloud2.create_cloud_xyz32(Header(), pts)
+        self.assertEqual(rf_distance(msg), 0.0)
+
+    def test_rf_distance_with_pose_transform(self):
+        msg = SlamStatus()
+        # Camera is at (1, 2, 3)
+        msg.pose.position.x = 1.0
+        msg.pose.position.y = 2.0
+        msg.pose.position.z = 3.0
+        msg.pose.orientation.w = 1.0
+
+        # Points in world frame at (1.0, 2.0, 3.0 + d) -> camera frame (0, 0, d)
+        z_offsets = np.linspace(2.0, 4.0, 21, dtype=np.float32)
+        pts = np.zeros((21, 3), dtype=np.float32)
+        pts[:, 0] = 1.0
+        pts[:, 1] = 2.0
+        pts[:, 2] = 3.0 + z_offsets
+        msg.tracked_points = point_cloud2.create_cloud_xyz32(Header(), pts)
+
+        # Median of z_offsets (2.0 to 4.0) is 3.0
+        self.assertAlmostEqual(rf_distance(msg), 3.0, places=4)
+
+    def test_rf_distance_with_nans(self):
+        msg = SlamStatus()
+        msg.pose.orientation.w = 1.0
+        pts = np.zeros((20, 3), dtype=np.float32)
+        pts[:, 2] = 4.0
+        # Set 10 points to NaN so only 10 valid points remain (< 15 min_points)
+        pts[:10, :] = np.nan
+        msg.tracked_points = point_cloud2.create_cloud_xyz32(Header(), pts)
+        self.assertEqual(rf_distance(msg), 0.0)
 
 
 if __name__ == '__main__':

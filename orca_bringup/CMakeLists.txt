@@ -44,6 +44,7 @@ install(
   models
   param
   rviz
+  urdf
   worlds
   DESTINATION share/${PROJECT_NAME})
 
