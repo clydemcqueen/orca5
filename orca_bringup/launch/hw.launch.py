@@ -4,53 +4,50 @@
 Launch orca5 on a topside computer and connect to a BlueROV2.
 """
 
-import math
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
-from launch.conditions import IfCondition
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, OpaqueFunction
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-def generate_launch_description():
+def launch_setup(context, *args, **kwargs):
     orca_bringup_dir = get_package_share_directory('orca_bringup')
+
+    calib_file_arg = LaunchConfiguration('camera_calibration_file').perform(context)
+    calib_filename = os.path.basename(calib_file_arg)
+    if not calib_filename.endswith('.yaml'):
+        calib_filename += '.yaml'
+
+    config_file_path = os.path.join(orca_bringup_dir, 'config', calib_filename)
+    param_file_path = os.path.join(orca_bringup_dir, 'param', calib_filename)
+    camera_info_url = 'file://' + config_file_path
 
     # Modify this for your ROV
     mav_device = 'udpin:0.0.0.0:14550'
-    camera_name = 'sim_camera'
-    camera_info_url = 'file://' + os.path.join(orca_bringup_dir, 'config', 'sim_camera.yaml')
-    gscam_config = 'udpsrc port=5600 ! application/x-rtp ! queue ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
+    camera_name = 'dwe_camera'
+    gscam_config = 'udpsrc port=5600 ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264 ! rtpjitterbuffer ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
     skip = 2  # Reduce 30 fps to 10 fps
 
-    nodes = [
-        DeclareLaunchArgument(
-            'bag',
-            default_value='False',
-            description='Bag interesting topics?',
-        ),
-        DeclareLaunchArgument(
-            'bridge',
-            default_value='True',
-            description='Launch SLAM bridge?',
-        ),
-        DeclareLaunchArgument(
-            'orb',
-            default_value='True',
-            description='Launch ORB_SLAM3?',
-        ),
-        DeclareLaunchArgument(
-            'rviz',
-            default_value='True',
-            description='Launch rviz?',
-        ),
-        DeclareLaunchArgument(
-            'use_vpe',
-            default_value='True',
-            description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
+    urdf_file_path = os.path.join(orca_bringup_dir, 'urdf', 'orca5_1.urdf')
+    with open(urdf_file_path, 'r') as infp:
+        robot_description = infp.read()
+
+    return [
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            output='screen',
+            parameters=[
+                {
+                    'robot_description': robot_description,
+                    'use_sim_time': False,
+                }
+            ],
         ),
         Node(
             package='gscam2',
@@ -66,35 +63,30 @@ def generate_launch_description():
                     'use_sim_time': False,
                 }
             ],
-            condition=IfCondition(LaunchConfiguration('orb')),
+            condition=IfCondition(LaunchConfiguration('gscam2')),
         ),
-        # Publish the static base_link -> camera_link transform.
-        # Modify this for your vehicle
+        # If we are replaying a bag, publish the camera_info message here
         Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
+            package='orca_bridge',
+            executable='camera_info_publisher.py',
+            output='screen',
             parameters=[
                 {
-                    'use_sim_time': False,
+                    'camera_info_url': camera_info_url,
+                    'frame_id': 'camera_sensor',
                 }
             ],
-            arguments=[
-                '--x',
-                '0',
-                '--y',
-                '0',
-                '--z',
-                '0',
-                '--roll',
-                '0',
-                '--pitch',
-                str(math.pi / 2),
-                '--yaw',
-                '0',
-                '--frame-id',
-                'base_link',
-                '--child-frame-id',
-                'camera_link',
+            condition=UnlessCondition(LaunchConfiguration('gscam2')),
+        ),
+        # Launch pose_to_path node for slam_path topic
+        Node(
+            package='orca_bridge',
+            executable='pose_to_path.py',
+            name='pose_to_path',
+            output='screen',
+            remappings=[
+                ('pose', 'slam_pose'),
+                ('path', 'slam_path'),
             ],
         ),
         # Bag useful topics
@@ -104,15 +96,20 @@ def generate_launch_description():
                 'bag',
                 'record',
                 '--include-hidden-topics',
+                '/annotated_image',
                 '/bridge_status',
                 '/camera_info',
                 '/camera_pose',
                 '/ekf_pose',
-                '/ekf_status',
+                '/ekf_status_report',
+                '/heartbeat',
+                '/image_raw',
                 '/rosout',
                 '/slam_delta',
+                '/slam_path',
                 '/slam_pose',
                 '/slam_status',
+                '/system_time',
                 '/tf',
                 '/tf_static',
             ],
@@ -140,9 +137,45 @@ def generate_launch_description():
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
                 'mav_device': mav_device,
-                'use_vpe': LaunchConfiguration('use_vpe'),
+                'settings_file': param_file_path,
             }.items(),
         ),
     ]
 
-    return LaunchDescription(nodes)
+
+def generate_launch_description():
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument(
+                'camera_calibration_file',
+                default_value='dwe_wet_800_600.yaml',
+                description='ROS2 camera calibration file in orca_bringup/config (default dwe_wet_800_600.yaml)',
+            ),
+            DeclareLaunchArgument(
+                'bag',
+                default_value='False',
+                description='Bag interesting topics?',
+            ),
+            DeclareLaunchArgument(
+                'bridge',
+                default_value='True',
+                description='Launch SLAM bridge?',
+            ),
+            DeclareLaunchArgument(
+                'orb',
+                default_value='True',
+                description='Launch ORB_SLAM3?',
+            ),
+            DeclareLaunchArgument(
+                'rviz',
+                default_value='True',
+                description='Launch rviz?',
+            ),
+            DeclareLaunchArgument(
+                'gscam2',
+                default_value='True',
+                description='Launch gscam2?',
+            ),
+            OpaqueFunction(function=launch_setup),
+        ]
+    )

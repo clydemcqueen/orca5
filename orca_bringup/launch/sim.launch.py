@@ -18,11 +18,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     orca_bringup_dir = get_package_share_directory('orca_bringup')
-    sub_common_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub_common.parm')
-    sub_vpd_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub_vpd.parm')
-    sub_vpe_parm_file = os.path.join(orca_bringup_dir, 'config', 'sub_vpe.parm')
-    sub_vpd_parm_files = f'{sub_common_parm_file},{sub_vpd_parm_file}'
-    sub_vpe_parm_files = f'{sub_common_parm_file},{sub_vpe_parm_file}'
+    sub_parm_file = os.path.join(orca_bringup_dir, 'config', 'sim.parm')
 
     nodes = [
         DeclareLaunchArgument('ardusub', default_value='True', description='Launch ardusub?'),
@@ -45,11 +41,6 @@ def generate_launch_description():
             'rviz',
             default_value='True',
             description='Launch rviz?',
-        ),
-        DeclareLaunchArgument(
-            'use_vpe',
-            default_value='True',
-            description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
         ),
         # Launch Gazebo
         ExecuteProcess(
@@ -81,6 +72,7 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
+                    'use_sim_time': True,
                     'camera_info_url': 'file://' + os.path.join(orca_bringup_dir, 'config', 'sim_camera.yaml'),
                     'frame_id': 'camera_sensor',
                 }
@@ -115,23 +107,40 @@ def generate_launch_description():
                 'camera_link',
             ],
         ),
+        # Launch pose_to_path node for slam_path topic
+        Node(
+            package='orca_bridge',
+            executable='pose_to_path.py',
+            name='pose_to_path',
+            output='screen',
+            remappings=[
+                ('pose', 'slam_pose'),
+                ('path', 'slam_path'),
+            ],
+        ),
         # Bag useful topics
         ExecuteProcess(
             cmd=[
                 'ros2',
                 'bag',
                 'record',
+                '--use-sim-time',
                 '--include-hidden-topics',
+                '/clock',
+                '/annotated_image',
                 '/bridge_status',
                 '/camera_info',
                 '/camera_pose',
                 '/ekf_pose',
-                '/ekf_status',
+                '/ekf_status_report',
+                '/heartbeat',
                 '/model/orca5/odometry',
                 '/rosout',
                 '/slam_delta',
+                '/slam_path',
                 '/slam_pose',
                 '/slam_status',
+                '/system_time',
                 '/tf',
                 '/tf_static',
             ],
@@ -159,7 +168,7 @@ def generate_launch_description():
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
                 'mav_device': 'udpin:0.0.0.0:14551',
-                'use_vpe': LaunchConfiguration('use_vpe'),
+                'settings_file': os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
             }.items(),
         ),
         # Launch ArduSub w/ SIM_JSON. Make sure ardusub is on the $PATH. To use the heavy (6dof) model: specify
@@ -176,7 +185,7 @@ def generate_launch_description():
                 '--home',
                 '47.6302,-122.3982391,-0.1,0',
                 '--defaults',
-                sub_vpe_parm_files if LaunchConfiguration('use_vpe') else sub_vpd_parm_files,
+                sub_parm_file,
             ],
             output='screen',
             condition=IfCondition(LaunchConfiguration('ardusub')),

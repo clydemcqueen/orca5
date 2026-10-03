@@ -1,8 +1,8 @@
 std_msgs/Header header
 
-# See https://mavlink.io/en/messages/ardupilotmega.html#EKF_STATUS_REPORT
+# ROS2 version of https://mavlink.io/en/messages/ardupilotmega.html#EKF_STATUS_REPORT
 
-uint16 EKF_ATTUDE = 1                   # Set if EKF's attitude estimate is good.
+uint16 EKF_ATTITUDE = 1                  # Set if EKF's attitude estimate is good.
 uint16 EKF_VELOCITY_HORIZ = 2           # Set if EKF's horizontal velocity estimate is good.
 uint16 EKF_VELOCITY_VERT = 4            # Set if EKF's vertical velocity estimate is good.
 uint16 EKF_POS_HORIZ_REL = 8            # Set if EKF's horizontal position (relative) estimate is good.

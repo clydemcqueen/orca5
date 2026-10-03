@@ -108,7 +108,7 @@ AP: Reached command #5
 ## Caveats
 
 This is presented as a simple end-to-end [Gazebo](https://gazebosim.org/home) simulation.
-It has not been tested on a real vehicle (yet).
+There has been some testing on real hardware, but it is still early days.
 
 ORB_SLAM3 provides a `MonocularIMU` mode, but Orca5 currently uses the simpler `Monocular` mode with a down-facing
 rangefinder like the [BlueRobotics Ping Sonar](https://www.bluerobotics.com) to provide scale.

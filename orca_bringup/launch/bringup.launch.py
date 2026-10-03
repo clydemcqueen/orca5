@@ -39,9 +39,9 @@ def generate_launch_description():
             description='MAVLink device address',
         ),
         DeclareLaunchArgument(
-            'use_vpe',
-            default_value='True',
-            description='Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?',
+            'settings_file',
+            default_value=os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
+            description='Path to ORB_SLAM3 settings file',
         ),
         Node(
             package='orb_slam3_ros',
@@ -50,7 +50,7 @@ def generate_launch_description():
             parameters=[
                 {
                     'use_sim_time': LaunchConfiguration('use_sim_time'),
-                    'settings_file': os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
+                    'settings_file': LaunchConfiguration('settings_file'),
                     'world_frame_id': 'world',
                 }
             ],
@@ -64,7 +64,6 @@ def generate_launch_description():
                 {
                     'use_sim_time': LaunchConfiguration('use_sim_time'),
                     'mav_device': LaunchConfiguration('mav_device'),
-                    'use_vpe': LaunchConfiguration('use_vpe'),
                 }
             ],
             condition=IfCondition(LaunchConfiguration('bridge')),

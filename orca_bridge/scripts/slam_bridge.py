@@ -16,7 +16,6 @@ import rclpy
 import rclpy.node
 import rclpy.serialization
 import rclpy.time
-import sensor_msgs.msg
 import slam
 import std_srvs.srv
 import sub
@@ -53,9 +52,6 @@ class MonoSlamBridge(rclpy.node.Node):
         # Expected frame rate
         self.frame_rate = self.declare_parameter('frame_rate', 10).get_parameter_value().integer_value
 
-        # Use VISION_POSITION_ESTIMATE instead of VISION_POSITION_DELTA?
-        self.use_vpe = self.declare_parameter('use_vpe', False).get_parameter_value().bool_value
-
         # Max delta for position and rotation to be considered an outlier
         self.max_delta_pos = self.declare_parameter('max_delta_pos', 0.5).get_parameter_value().double_value
         self.max_delta_rot = self.declare_parameter('max_delta_rot', math.pi / 6).get_parameter_value().double_value
@@ -90,16 +86,17 @@ class MonoSlamBridge(rclpy.node.Node):
         )
 
         # Subscriptions
-        self.map_sub = self.create_subscription(sensor_msgs.msg.PointCloud2, 'map_points', self.map_callback, 10)
-        self.slam_sub = self.create_subscription(orb_slam3_msgs.msg.SlamStatus, 'slam_status', self.slam_callback, 10)
+        # Set queue length to 1 so we don't process stale data
+        self.slam_sub = self.create_subscription(orb_slam3_msgs.msg.SlamStatus, 'slam_status', self.slam_callback, 1)
 
         # Publishers
         self.bridge_status_pub = self.create_publisher(orca_msgs.msg.BridgeStatus, 'bridge_status', 10)
         self.ekf_pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'ekf_pose', 10)
-        self.ekf_status_pub = self.create_publisher(orca_msgs.msg.FilterStatus, 'ekf_status', 10)
-        self.scaled_map_pub = self.create_publisher(sensor_msgs.msg.PointCloud2, 'map_points/scaled', 10)
+        self.ekf_status_pub = self.create_publisher(orca_msgs.msg.EkfStatusReport, 'ekf_status_report', 10)
+        self.heartbeat_pub = self.create_publisher(orca_msgs.msg.Heartbeat, 'heartbeat', 10)
         self.slam_delta_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'slam_delta', 10)
         self.slam_pose_pub = self.create_publisher(geometry_msgs.msg.PoseStamped, 'slam_pose', 10)
+        self.system_time_pub = self.create_publisher(orca_msgs.msg.SystemTime, 'system_time', 10)
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         # Service clients
@@ -116,7 +113,7 @@ class MonoSlamBridge(rclpy.node.Node):
     def publish_static_transforms(self):
         """Publish static transforms. Call this once."""
 
-        tf_static_broadcaster = tf2_ros.StaticTransformBroadcaster(self)
+        self.tf_static_broadcaster = tf2_ros.StaticTransformBroadcaster(self)
 
         tf_msg = geometry_msgs.msg.TransformStamped()
         tf_msg.header.stamp = self.get_clock().now().to_msg()
@@ -124,12 +121,12 @@ class MonoSlamBridge(rclpy.node.Node):
         tf_msg.header.frame_id = 'slam'
         tf_msg.child_frame_id = 'world'
         tf_msg.transform = self.t_slam_world.to_transform_msg()
-        tf_static_broadcaster.sendTransform(tf_msg)
+        self.tf_static_broadcaster.sendTransform(tf_msg)
 
         tf_msg.header.frame_id = 'camera_link'
         tf_msg.child_frame_id = 'camera_sensor'
         tf_msg.transform = geometry.Pose.T_FLU_OPENCV.to_transform_msg()
-        tf_static_broadcaster.sendTransform(tf_msg)
+        self.tf_static_broadcaster.sendTransform(tf_msg)
 
     def set_ekf_sources(self, slam_tracking: bool):
         """
@@ -281,7 +278,7 @@ class MonoSlamBridge(rclpy.node.Node):
         delta_p = delta.get_position()
         delta_e = delta.get_euler()
 
-        # Detect outliers
+        # Detect outliers, but allow them
         if self.is_outlier(delta_p, delta_e):
             flags |= orca_msgs.msg.BridgeStatus.OK_OUTLIER
 
@@ -292,35 +289,20 @@ class MonoSlamBridge(rclpy.node.Node):
         t_map_base = current_map.t_map_slam.mult(t_slam_base)
 
         # ----------
-        # Send a VISION_POSITION_DELTA (VPD) or VISION_POSITION_ESTIMATE (VPE) message to ArduSub
+        # Send a VISION_POSITION_DELTA (VPD) message to ArduSub
         # ----------
 
-        if self.use_vpe:
-            t_map_base_ned = t_map_base.enu_to_ned_standard()
-            e_frd = t_map_base_ned.get_euler()
+        # Convert FLU (forward, left, up) to FRD (forward, right, down)
+        delta_p_frd = (delta_p[0], -delta_p[1], -delta_p[2])
+        delta_e_frd = (delta_e[0], -delta_e[1], -delta_e[2])
 
-            self.conn.mav.vision_position_estimate_send(
-                0,  # time_usec (not used)
-                t_map_base_ned.p[0],
-                t_map_base_ned.p[1],
-                t_map_base_ned.p[2],
-                e_frd[0],
-                e_frd[1],
-                e_frd[2],
-            )
-
-        else:
-            # Convert FLU (forward, left, up) to FRD (forward, right, down)
-            delta_p_frd = (delta_p[0], -delta_p[1], -delta_p[2])
-            delta_e_frd = (delta_e[0], -delta_e[1], -delta_e[2])
-
-            self.conn.mav.vision_position_delta_send(
-                0,  # time_usec (not used)
-                1000000 // self.frame_rate,  # delta usec
-                delta_e_frd,
-                delta_p_frd,
-                0,  # confidence (not used)
-            )
+        self.conn.mav.vision_position_delta_send(
+            0,  # time_usec (not used)
+            1000000 // self.frame_rate,  # delta usec
+            delta_e_frd,
+            delta_p_frd,
+            100,  # confidence, assume 100%
+        )
 
         # Publish the map -> slam transform
         tf_msg = geometry_msgs.msg.TransformStamped()
@@ -347,15 +329,6 @@ class MonoSlamBridge(rclpy.node.Node):
         # Publish a status message
         self.publish_bridge_status(msg.header.stamp, flags)
 
-    def map_callback(self, msg: sensor_msgs.msg.PointCloud2):
-        """Scale the map and republish it."""
-
-        if self.maps.current_map is None:
-            self.get_logger().warn('No map, dropping point cloud', throttle_duration_sec=1.0)
-            return
-
-        self.scaled_map_pub.publish(slam.scale_cloud(msg, self.maps.current_map.scale))
-
     def timer_callback(self):
         """Update ArduSub state and publish the results."""
 
@@ -373,8 +346,8 @@ class MonoSlamBridge(rclpy.node.Node):
             self.reset_client.call_async(reset_request)
             self.sub.button1 = False
 
-        # Publish the EKF status
-        ekf_status_msg = orca_msgs.msg.FilterStatus()
+        # Republish EKF_STATUS_REPORT
+        ekf_status_msg = orca_msgs.msg.EkfStatusReport()
         ekf_status_msg.header.stamp = now_stamp
         ekf_status_msg.header.frame_id = 'map'
         ekf_status_msg.flags = self.sub.ekf_status_report.flags
@@ -385,6 +358,26 @@ class MonoSlamBridge(rclpy.node.Node):
         ekf_status_msg.terrain_alt_variance = self.sub.ekf_status_report.terrain_alt_variance
         ekf_status_msg.airspeed_variance = self.sub.ekf_status_report.airspeed_variance
         self.ekf_status_pub.publish(ekf_status_msg)
+
+        # Republish HEARTBEAT
+        heartbeat_msg = orca_msgs.msg.Heartbeat()
+        heartbeat_msg.header.stamp = now_stamp
+        heartbeat_msg.header.frame_id = 'map'
+        heartbeat_msg.type = self.sub.heartbeat.type
+        heartbeat_msg.autopilot = self.sub.heartbeat.autopilot
+        heartbeat_msg.base_mode = self.sub.heartbeat.base_mode
+        heartbeat_msg.custom_mode = self.sub.heartbeat.custom_mode
+        heartbeat_msg.system_status = self.sub.heartbeat.system_status
+        heartbeat_msg.mavlink_version = self.sub.heartbeat.mavlink_version
+        self.heartbeat_pub.publish(heartbeat_msg)
+
+        # Republish SYSTEM_TIME
+        system_time_msg = orca_msgs.msg.SystemTime()
+        system_time_msg.header.stamp = now_stamp
+        system_time_msg.header.frame_id = 'map'
+        system_time_msg.time_unix_usec = self.sub.system_time.time_unix_usec
+        system_time_msg.time_boot_ms = self.sub.system_time.time_boot_ms
+        self.system_time_pub.publish(system_time_msg)
 
         # Publish the ROV pose as determined by the ArduSub EKF
         t_map_base_from_ekf = self.sub.t_map_base_ned.ned_to_enu_standard()  # Swaps axes and applies 90d yaw rotation

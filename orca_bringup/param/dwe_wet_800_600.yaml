@@ -1,0 +1,77 @@
+%YAML:1.0
+---
+
+# This yaml file is opened by ORB_SLAM3
+
+File.version: "1.0"
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters
+#--------------------------------------------------------------------------------------------
+
+Camera.type: "PinHole"
+
+# Camera calibration and distortion parameters (OpenCV) 
+Camera1.fx: 680.8488343253698
+Camera1.fy: 680.3403651844601
+Camera1.cx: 388.118033524899
+Camera1.cy: 329.53821593975965
+
+Camera1.k1: -0.2978481801126405
+Camera1.k2: 0.13333249682046694
+Camera1.p1: 0.004255307917279883
+Camera1.p2: 0.0004900132207902939
+Camera1.k3: 0.0
+
+Camera.width: 800
+Camera.height: 600
+
+Camera.newWidth: 800
+Camera.newHeight: 600
+
+# Camera frames per second 
+Camera.fps: 10
+
+# Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
+Camera.RGB: 1
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+
+# ORB Extractor: Number of features per image
+ORBextractor.nFeatures: 1000
+
+# ORB Extractor: Scale factor between levels in the scale pyramid 	
+ORBextractor.scaleFactor: 1.2
+
+# ORB Extractor: Number of levels in the scale pyramid	
+ORBextractor.nLevels: 8
+
+# ORB Extractor: Fast threshold
+# Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
+# Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
+# You can lower these values if your images have low contrast			
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+
+#--------------------------------------------------------------------------------------------
+# Tracking behavior
+#--------------------------------------------------------------------------------------------
+
+# How long until we create a new map, in seconds; must be a real number
+System.timeRecentlyLost: 10000000.0
+
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters (these are no longer used, but the code still requires them)
+#---------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1.0
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -1.8
+Viewer.ViewpointF: 500.0

@@ -18,7 +18,9 @@ ament_auto_find_build_dependencies()
 rosidl_generate_interfaces(
   orca_msgs
   msg/BridgeStatus.msg
-  msg/FilterStatus.msg
+  msg/EkfStatusReport.msg
+  msg/Heartbeat.msg
+  msg/SystemTime.msg
   DEPENDENCIES geometry_msgs sensor_msgs std_msgs
 )
 
