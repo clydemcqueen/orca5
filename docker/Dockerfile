@@ -61,6 +61,7 @@ WORKDIR /home/$USERNAME/colcon_ws
 COPY --chown=$USER_UID:$USER_GID orca_bridge/package.xml src/orca5/orca_bridge/
 COPY --chown=$USER_UID:$USER_GID orca_bringup/package.xml src/orca5/orca_bringup/
 COPY --chown=$USER_UID:$USER_GID orca_msgs/package.xml src/orca5/orca_msgs/
+COPY --chown=$USER_UID:$USER_GID orca_test/package.xml src/orca5/orca_test/
 
 # Run rosdep over all repos
 # Fun fact: rosdep will automatically elevate permissions, but apt-get will not, so it requires sudo
@@ -181,6 +182,7 @@ RUN [ "/bin/bash" , "-c" , "\
 
 # Configure the shell environment
 RUN echo "export PATH=\"/home/$USERNAME/ardupilot/build/sitl/bin:\$PATH\"" >> /home/$USERNAME/.bashrc
+ENV PATH="/home/$USERNAME/ardupilot/build/sitl/bin:${PATH}"
 
 # Use bash as the default shell
 SHELL ["/bin/bash", "-c"]

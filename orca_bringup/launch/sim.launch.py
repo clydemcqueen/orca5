@@ -10,9 +10,9 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
@@ -42,10 +42,27 @@ def generate_launch_description():
             default_value='True',
             description='Launch rviz?',
         ),
-        # Launch Gazebo
+        DeclareLaunchArgument(
+            'headless',
+            default_value='False',
+            description='Run Gazebo headless (server only)?',
+        ),
+        DeclareLaunchArgument(
+            'speedup',
+            default_value='1',
+            description='ArduSub simulation speedup factor',
+        ),
+        # Launch Gazebo (headless)
+        ExecuteProcess(
+            cmd=['gz', 'sim', '-s', '-v', '3', '-r', os.path.join(orca_bringup_dir, 'worlds', 'pnw.world')],
+            output='screen',
+            condition=IfCondition(LaunchConfiguration('headless')),
+        ),
+        # Launch Gazebo (GUI)
         ExecuteProcess(
             cmd=['gz', 'sim', '-v', '3', '-r', os.path.join(orca_bringup_dir, 'worlds', 'pnw.world')],
             output='screen',
+            condition=UnlessCondition(LaunchConfiguration('headless')),
         ),
         # Bridge images
         Node(
@@ -158,7 +175,11 @@ def generate_launch_description():
                 }
             ],
             arguments=['-d', os.path.join(orca_bringup_dir, 'rviz', 'sim.rviz')],
-            condition=IfCondition(LaunchConfiguration('rviz')),
+            condition=IfCondition(
+                PythonExpression(
+                    ["'", LaunchConfiguration('rviz'), "' and not '", LaunchConfiguration('headless'), "'"]
+                )
+            ),
         ),
         # Bring up SLAM nodes
         IncludeLaunchDescription(
@@ -186,6 +207,10 @@ def generate_launch_description():
                 '47.6302,-122.3982391,-0.1,0',
                 '--defaults',
                 sub_parm_file,
+                '--serial1',
+                'udpclient:127.0.0.1:14551',
+                '--speedup',
+                LaunchConfiguration('speedup'),
             ],
             output='screen',
             condition=IfCondition(LaunchConfiguration('ardusub')),

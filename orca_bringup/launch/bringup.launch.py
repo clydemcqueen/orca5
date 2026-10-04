@@ -43,6 +43,11 @@ def generate_launch_description():
             default_value=os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
             description='Path to ORB_SLAM3 settings file',
         ),
+        DeclareLaunchArgument(
+            'voc_file',
+            default_value=os.path.join(get_package_share_directory('orb_slam3_ros'), 'Vocabulary', 'ORBvoc.txt'),
+            description='Path to ORB_SLAM3 vocabulary file',
+        ),
         Node(
             package='orb_slam3_ros',
             executable='orb_slam3_ros_mono',
@@ -50,6 +55,7 @@ def generate_launch_description():
             parameters=[
                 {
                     'use_sim_time': LaunchConfiguration('use_sim_time'),
+                    'voc_file': LaunchConfiguration('voc_file'),
                     'settings_file': LaunchConfiguration('settings_file'),
                     'world_frame_id': 'world',
                 }

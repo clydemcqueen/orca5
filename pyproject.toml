@@ -1,11 +1,14 @@
 [tool.pyrefly]
-python-interpreter-path = ".venv/bin/python"
+# Use the Python environment in the containing ROS workspace
+python-interpreter-path = "../../.venv/bin/python"
 search_path = [
     "orca_bridge/scripts",
     "orca_bringup/scripts",
+    "orca_test",
     "/opt/ros/jazzy/lib/python3.12/site-packages",
-    "/home/clyde/workspaces/orca5_ws/install/orca_msgs/lib/python3.12/site-packages",
-    "/home/clyde/workspaces/orca5_ws/install/orb_slam3_msgs/lib/python3.12/site-packages"
+    "../../install/orca_msgs/lib/python3.12/site-packages",
+    "../../install/orb_slam3_msgs/lib/python3.12/site-packages",
+    "../../.venv/lib64/python3.12/site-packages/"
 ]
 
 [tool.ruff]
