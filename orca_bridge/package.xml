@@ -7,6 +7,9 @@
   <maintainer email="clyde@mcqueen.net">Clyde McQueen</maintainer>
   <license>MIT</license>
 
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
   <depend>nav_msgs</depend>
   <depend>orb_slam3_msgs</depend>
   <depend>orca_msgs</depend>
@@ -14,6 +17,7 @@
   <depend>sensor_msgs</depend>
   <depend>std_srvs</depend>
 
+  <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>python3-pytest</test_depend>
 
   <export>

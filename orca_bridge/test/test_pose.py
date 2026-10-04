@@ -13,11 +13,12 @@ import unittest
 
 import numpy as np
 import transforms3d
-from geometry import Pose
 from orb_slam3_msgs.msg import SlamStatus
 from sensor_msgs_py import point_cloud2
-from slam import rf_distance
 from std_msgs.msg import Header
+
+from orca_bridge.geometry import Pose
+from orca_bridge.slam import rf_distance
 
 
 class TestPoseCoordinateConversions(unittest.TestCase):

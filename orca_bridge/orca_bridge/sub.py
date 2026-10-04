@@ -1,7 +1,7 @@
-import geometry
 import pymavlink.dialects.v20.ardupilotmega as apm
 
 import orca_msgs.msg
+from orca_bridge import geometry
 
 
 class Sub:

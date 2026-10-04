@@ -2,7 +2,7 @@
 # Use the Python environment in the containing ROS workspace
 python-interpreter-path = "../../.venv/bin/python"
 search_path = [
-    "orca_bridge/scripts",
+    "orca_bridge",
     "orca_bringup/scripts",
     "orca_test",
     "/opt/ros/jazzy/lib/python3.12/site-packages",
