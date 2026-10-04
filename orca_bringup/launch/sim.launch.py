@@ -12,7 +12,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -43,9 +43,9 @@ def generate_launch_description():
             description='Launch rviz?',
         ),
         DeclareLaunchArgument(
-            'headless',
-            default_value='False',
-            description='Run Gazebo headless (server only)?',
+            'gz_gui',
+            default_value='True',
+            description='Run Gazebo with the GUI?',
         ),
         DeclareLaunchArgument(
             'speedup',
@@ -56,13 +56,13 @@ def generate_launch_description():
         ExecuteProcess(
             cmd=['gz', 'sim', '-s', '-v', '3', '-r', os.path.join(orca_bringup_dir, 'worlds', 'pnw.world')],
             output='screen',
-            condition=IfCondition(LaunchConfiguration('headless')),
+            condition=UnlessCondition(LaunchConfiguration('gz_gui')),
         ),
         # Launch Gazebo (GUI)
         ExecuteProcess(
             cmd=['gz', 'sim', '-v', '3', '-r', os.path.join(orca_bringup_dir, 'worlds', 'pnw.world')],
             output='screen',
-            condition=UnlessCondition(LaunchConfiguration('headless')),
+            condition=IfCondition(LaunchConfiguration('gz_gui')),
         ),
         # Bridge images
         Node(
@@ -175,11 +175,7 @@ def generate_launch_description():
                 }
             ],
             arguments=['-d', os.path.join(orca_bringup_dir, 'rviz', 'sim.rviz')],
-            condition=IfCondition(
-                PythonExpression(
-                    ["'", LaunchConfiguration('rviz'), "' and not '", LaunchConfiguration('headless'), "'"]
-                )
-            ),
+            condition=IfCondition(LaunchConfiguration('gz_gui')),
         ),
         # Bring up SLAM nodes
         IncludeLaunchDescription(

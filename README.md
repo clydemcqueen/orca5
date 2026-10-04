@@ -105,33 +105,6 @@ waypoint 5
 AP: Reached command #5
 ~~~
 
-## Automated Tests
-
-End-to-end simulation tests run headless Gazebo and ArduSub SITL in lockstep using `launch_testing`:
-
-### Running in Docker
-
-Run the headless test suite using `docker/test.sh`:
-~~~
-cd docker
-./test.sh [speedup]
-~~~
-
-### Running in an Active Container or Workspace
-
-From the workspace root:
-~~~
-colcon build --symlink-install --packages-select orca_test
-source install/local_setup.bash
-colcon test --packages-select orca_test --event-handlers console_direct+
-colcon test-result --verbose
-~~~
-
-To run faster than real time, set `ORCA_TEST_SPEEDUP`:
-~~~
-ORCA_TEST_SPEEDUP=2 colcon test --packages-select orca_test --event-handlers console_direct+
-~~~
-
 ## Caveats
 
 This is presented as a simple end-to-end [Gazebo](https://gazebosim.org/home) simulation.

@@ -29,7 +29,7 @@ def generate_test_description():
     sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(sim_launch_path),
         launch_arguments={
-            'headless': 'True',
+            'gz_gui': 'False',
             'speedup': speedup,
             'rviz': 'False',
             'bag': 'False',
