@@ -16,14 +16,15 @@ See the [Dockerfile](docker/Dockerfile) for details.
 
 ## Build and Run
 
-Build a docker image, then run it:
+Build the docker image and run it:
 ~~~
 cd docker
 ./build.sh sim
-./run.sh sim nvidia
+./run.sh sim
 ~~~
 
 This is a dev container, so the orca5 directory will be mounted inside the container.
+
 Finish the build process:
 ~~~
 colcon build
@@ -32,7 +33,6 @@ source install/local_setup.bash
 
 Launch the simulation:
 ~~~
-source venv/bin/activate
 ros2 launch orca_bringup sim.launch.py
 ~~~
 
@@ -49,7 +49,6 @@ docker exec -it orca5_sim /bin/bash
 
 Launch mavproxy as the GCS:
 ~~~
-source venv/bin/activate
 mavproxy.py --out 127.0.0.1:14550 --out 127.0.0.1:14551 --master tcp:127.0.0.1:5760
 ~~~
 
@@ -103,6 +102,15 @@ AP: Reached command #4
 AP: Mission: 5 WP
 waypoint 5
 AP: Reached command #5
+~~~
+
+## Tests
+
+Build the docker image, run it, and run tests in the container:
+~~~
+cd docker
+./test.sh               # Runs with auto-detected graphics at speedup=1
+./test.sh 2             # Runs at speedup=2
 ~~~
 
 ## Caveats

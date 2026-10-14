@@ -153,3 +153,12 @@ BTN0_SFUNCTION 108  # shift A
 BTN1_SFUNCTION 109  # shift B
 BTN2_SFUNCTION 110  # shift X
 BTN3_SFUNCTION 111  # shift Y
+
+# Set up stream rates for key messages if QGC / BlueOS / Cockpit are not running
+# TODO this is a big hammer, we need just a few messages. Add checks in slam_bridge
+SR1_EXTRA1 10
+SR1_EXTRA2 10
+SR1_EXTRA3 10
+SR1_POSITION 10
+SR1_RAW_SENS 10
+SR1_EXT_STAT 2

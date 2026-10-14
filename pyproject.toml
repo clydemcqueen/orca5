@@ -1,19 +1,18 @@
-[tool.pyrefly]
-python-interpreter-path = ".venv/bin/python"
-search_path = [
-    "orca_bridge/scripts",
-    "orca_bringup/scripts",
-    "/opt/ros/jazzy/lib/python3.12/site-packages",
-    "/home/clyde/workspaces/orca5_ws/install/orca_msgs/lib/python3.12/site-packages",
-    "/home/clyde/workspaces/orca5_ws/install/orb_slam3_msgs/lib/python3.12/site-packages"
-]
+[tool.pyright]
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+typeCheckingMode = "basic" # "strict" is usually too noisy for ROS 2 rclpy/msg types
 
 [tool.ruff]
 line-length = 120
+src = [".", "orca_bridge", "orca_test"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["orca_bridge", "orca_bringup", "orca_msgs", "orca_test"]
 
 [tool.ruff.format]
 # Could go either way, but 90% of the code is single, so settle on that
