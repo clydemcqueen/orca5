@@ -4,6 +4,7 @@ import rclpy
 import rclpy.node
 import sensor_msgs.msg
 import yaml  # type: ignore
+from rclpy.executors import ExternalShutdownException
 
 
 class CameraInfoPublisher(rclpy.node.Node):
@@ -69,8 +70,14 @@ class CameraInfoPublisher(rclpy.node.Node):
 def main(args=None):
     rclpy.init(args=args)
     node = CameraInfoPublisher()
-    rclpy.spin(node)
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
