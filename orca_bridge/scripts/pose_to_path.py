@@ -9,6 +9,7 @@ import nav_msgs.msg
 import rclpy
 import rclpy.node
 import rclpy.qos
+from rclpy.executors import ExternalShutdownException
 
 
 class PoseToPathNode(rclpy.node.Node):
@@ -47,9 +48,14 @@ class PoseToPathNode(rclpy.node.Node):
 def main(args=None):
     rclpy.init(args=args)
     pose_to_path_node = PoseToPathNode()
-    rclpy.spin(pose_to_path_node)
-    pose_to_path_node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(pose_to_path_node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        pose_to_path_node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

@@ -7,7 +7,6 @@ Monocular SLAM to ArduSub bridge
 import math
 
 import builtin_interfaces.msg
-import geometry
 import geometry_msgs.msg
 import orb_slam3_msgs.msg
 import pymavlink.dialects.v20.ardupilotmega as apm
@@ -16,12 +15,12 @@ import rclpy
 import rclpy.node
 import rclpy.serialization
 import rclpy.time
-import slam
 import std_srvs.srv
-import sub
 import tf2_ros
+from rclpy.executors import ExternalShutdownException
 
 import orca_msgs.msg
+from orca_bridge import geometry, slam, sub
 
 
 def stamp_to_s(stamp: builtin_interfaces.msg.Time) -> float:
@@ -399,8 +398,14 @@ class MonoSlamBridge(rclpy.node.Node):
 def main(args=None):
     rclpy.init(args=args)
     node = MonoSlamBridge()
-    rclpy.spin(node)
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
