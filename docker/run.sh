@@ -1,79 +1,80 @@
 #!/usr/bin/env bash
 
+# run.sh - Run Orca5 Docker container for interactive use or commands
+#
 # Usage:
-# ./run.sh <target> <graphics>
+#   ./run.sh [target: sim|hw] [graphics: auto|nvidia|intel|cpu] [command...]
+#
+# Examples:
+#   ./run.sh                  # Runs sim container with auto-detected graphics
+#   ./run.sh sim nvidia       # Runs sim container with NVIDIA GPU acceleration
+#   ./run.sh hw               # Runs hw container for topside computer
 
-if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Error: <target> and <graphics> arguments required."
-  echo "Usage: ./run.sh <target> <graphics>"
-  echo "where <target> can be sim or hw."
-  echo "and <graphics> can be nvidia or intel."
-  exit 1
-fi
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source "$DIR/common.sh"
 
-TARGET=$1
-GRAPHICS=$2
+TARGET="${1:-sim}"
+GRAPHICS="${2:-auto}"
 TAG="orca5:${TARGET}"
 
-# Set timezone
-# Mount orca5 source
-DOCKER_FLAGS="-it --rm \
+ensure_image "$TAG" "$TARGET" "$DIR"
+
+GRAPHICS=$(detect_graphics "$GRAPHICS")
+echo "Using graphics mode: $GRAPHICS"
+
+DOCKER_FLAGS="--rm \
     -v /etc/localtime:/etc/localtime:ro \
-    -v ..:/home/orca5/colcon_ws/src/orca5 \
+    -v $DIR/..:/home/orca5/colcon_ws/src/orca5 \
     --privileged"
 
-# X11 forwarding
-XAUTH=/tmp/.docker.xauth
-if [ ! -f $XAUTH ]; then
-    xauth_list=$(xauth nlist $DISPLAY)
-    xauth_list=$(sed -e 's/^..../ffff/' <<< "$xauth_list")
-    if [ ! -z "$xauth_list" ]
-    then
-        echo "$xauth_list" | xauth -f $XAUTH nmerge -
-    else
-        touch $XAUTH
+# Apply graphics flags
+DOCKER_FLAGS+=" $(get_graphics_flags "$GRAPHICS")"
+DOCKER_FLAGS+=" $(get_dri_group_flags)"
+
+# Joystick support
+if [ -d "/dev/input" ]; then
+    DOCKER_FLAGS+=" -v /dev/input:/dev/input"
+fi
+
+# X11 forwarding for GUI applications
+if [ -n "$DISPLAY" ]; then
+    XAUTH=/tmp/.docker.xauth
+    if [ ! -f "$XAUTH" ]; then
+        xauth_list=$(xauth nlist "$DISPLAY" 2>/dev/null)
+        if [ -n "$xauth_list" ]; then
+            xauth_list=$(sed -e 's/^..../ffff/' <<< "$xauth_list")
+            echo "$xauth_list" | xauth -f "$XAUTH" nmerge - 2>/dev/null || touch "$XAUTH"
+        else
+            touch "$XAUTH"
+        fi
+        chmod a+r "$XAUTH"
     fi
-    chmod a+r $XAUTH
+
+    DOCKER_FLAGS+=" \
+        -e DISPLAY \
+        -e QT_X11_NO_MITSHM=1 \
+        -e XAUTHORITY=$XAUTH \
+        -v $XAUTH:$XAUTH \
+        -v /tmp/.X11-unix:/tmp/.X11-unix"
 fi
 
-# Flags for GUI applications
-DOCKER_FLAGS+=" \
-  -e DISPLAY \
-  -e QT_X11_NO_MITSHM=1 \
-  -e XAUTHORITY=$XAUTH \
-  -v $XAUTH:$XAUTH \
-  -v /tmp/.X11-unix:/tmp/.X11-unix"
-
-# Select a container
+# Select target container naming and network options
 if [ "$TARGET" == "sim" ]; then
-  echo "Running sim (simulation) container..."
-  DOCKER_FLAGS+=" --name orca5_sim"
+    echo "Configuring sim (simulation) container..."
+    DOCKER_FLAGS+=" --name orca5_sim"
 elif [ "$TARGET" == "hw" ]; then
-  echo "Running hw (hardware) container..."
-  DOCKER_FLAGS+=" --name orca5_hw --net=host"
+    echo "Configuring hw (hardware) container..."
+    DOCKER_FLAGS+=" --name orca5_hw --net=host"
 fi
 
-# Select graphics
-if [ "$GRAPHICS" == "nvidia" ]; then
-  echo "Adding NVIDIA flags..."
-  # For NVIDIA graphics. Install the NVIDIA Container Toolkit on the host:
-  # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
-  DOCKER_FLAGS+=" \
-    -e NVIDIA_VISIBLE_DEVICES=all \
-    -e NVIDIA_DRIVER_CAPABILITIES=all \
-    -v /dev/input:/dev/input \
-    --security-opt seccomp=unconfined \
-    --gpus all"
-elif [ "$GRAPHICS" == "intel" ]; then
-  echo "Adding Intel flags..."
-  # For Intel graphics
-  DOCKER_FLAGS+=" \
-    -v /dev/dri:/dev/dri \
-    --device /dev/dri"
+# Shift target and graphics parameters if provided
+[ $# -gt 0 ] && shift
+[ $# -gt 0 ] && shift
+
+if [ $# -gt 0 ]; then
+    echo "Running command in ${TAG}: $*"
+    docker run $DOCKER_FLAGS "$TAG" "$@"
 else
-  echo "Error: unsupported graphics option '$GRAPHICS'. Use 'nvidia' or 'intel'."
-  exit 1
+    echo "Starting interactive container ${TAG}..."
+    docker run -it $DOCKER_FLAGS "$TAG"
 fi
-
-echo "Starting container ${TAG}..."
-docker run $DOCKER_FLAGS $TAG

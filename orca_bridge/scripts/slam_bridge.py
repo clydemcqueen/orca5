@@ -13,7 +13,6 @@ import pymavlink.dialects.v20.ardupilotmega as apm
 import pymavlink.mavutil
 import rclpy
 import rclpy.node
-import rclpy.serialization
 import rclpy.time
 import std_srvs.srv
 import tf2_ros

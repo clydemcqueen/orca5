@@ -61,6 +61,7 @@ WORKDIR /home/$USERNAME/colcon_ws
 COPY --chown=$USER_UID:$USER_GID orca_bridge/package.xml src/orca5/orca_bridge/
 COPY --chown=$USER_UID:$USER_GID orca_bringup/package.xml src/orca5/orca_bringup/
 COPY --chown=$USER_UID:$USER_GID orca_msgs/package.xml src/orca5/orca_msgs/
+COPY --chown=$USER_UID:$USER_GID orca_test/package.xml src/orca5/orca_test/
 
 # Run rosdep over all repos
 # Fun fact: rosdep will automatically elevate permissions, but apt-get will not, so it requires sudo
@@ -91,7 +92,8 @@ RUN python3 -m venv venv --system-site-packages \
   && pip install -r src/orca5/requirements.txt
 
 # Configure the shell environment
-RUN echo "source /home/$USERNAME/colcon_ws/install/setup.bash" >> /home/$USERNAME/.bashrc
+RUN echo "source /home/$USERNAME/colcon_ws/install/setup.bash" >> /home/$USERNAME/.bashrc \
+  && echo "source /home/$USERNAME/colcon_ws/venv/bin/activate" >> /home/$USERNAME/.bashrc
 
 # Create a mount point for orca5 source, this will shadow the existing orca5 directory
 VOLUME /home/$USERNAME/colcon_ws/src/orca5
@@ -181,6 +183,7 @@ RUN [ "/bin/bash" , "-c" , "\
 
 # Configure the shell environment
 RUN echo "export PATH=\"/home/$USERNAME/ardupilot/build/sitl/bin:\$PATH\"" >> /home/$USERNAME/.bashrc
+ENV PATH="/home/$USERNAME/ardupilot/build/sitl/bin:${PATH}"
 
 # Use bash as the default shell
 SHELL ["/bin/bash", "-c"]
