@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 # Usage:
-# ./orca_bringup/scripts/create_heightmap.py
-# mv heightmap.png orca_bringup/models/seafloor
+# ./orca_gz/scripts/create_heightmap.py
+# mv heightmap.png orca_gz/models/seafloor
 
 import numpy as np
 from PIL import Image

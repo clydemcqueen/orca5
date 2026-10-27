@@ -11,6 +11,7 @@
   <depend>nav_msgs</depend>
   <depend>orb_slam3_msgs</depend>
   <depend>orca_bringup</depend>
+  <depend>orca_gz</depend>
   <depend>orca_msgs</depend>
   <depend>rclpy</depend>
 

@@ -1,0 +1,2 @@
+prepend-non-duplicate;GZ_SIM_RESOURCE_PATH;share/orca_gz/worlds
+prepend-non-duplicate;GZ_SIM_RESOURCE_PATH;share/orca_gz/models

@@ -11,7 +11,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://orca_bringup/models/orca5/meshes/bluerov2.dae" scale="0.025 0.025 0.025"/>
+        <mesh filename="package://orca_bringup/urdf/meshes/bluerov2.dae" scale="0.025 0.025 0.025"/>
       </geometry>
     </visual>
     <collision>

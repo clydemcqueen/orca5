@@ -3,7 +3,7 @@
 ### [sim.launch.py](launch/sim.launch.py)
 
 Launch a Gazebo simulation.
-Calls [bringup.launch.py](launch/bringup.launch.py).
+Calls [gz.launch.py](../orca_gz/launch/gz.launch.py) and [bringup.launch.py](launch/bringup.launch.py).
 
 To see parameters: `ros2 launch --show-args orca_bringup sim.launch.py`
 

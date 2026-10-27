@@ -34,7 +34,9 @@ RUN apt-get update \
 
 # Create a non-root user
 # Required for ardupilot install, but generally a good idea
-RUN groupadd --gid $USER_GID $USERNAME \
+# Also ensure GID 110 (render) exists to avoid 'groups: cannot find name for group ID 110'
+RUN (groupmod -g 110 render 2>/dev/null || groupadd -f -g 110 render) \
+  && groupadd --gid $USER_GID $USERNAME \
   && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
   && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
   && chmod 0440 /etc/sudoers.d/$USERNAME \
@@ -61,7 +63,6 @@ WORKDIR /home/$USERNAME/colcon_ws
 COPY --chown=$USER_UID:$USER_GID orca_bridge/package.xml src/orca5/orca_bridge/
 COPY --chown=$USER_UID:$USER_GID orca_bringup/package.xml src/orca5/orca_bringup/
 COPY --chown=$USER_UID:$USER_GID orca_msgs/package.xml src/orca5/orca_msgs/
-COPY --chown=$USER_UID:$USER_GID orca_test/package.xml src/orca5/orca_test/
 
 # Run rosdep over all repos
 # Fun fact: rosdep will automatically elevate permissions, but apt-get will not, so it requires sudo
@@ -169,11 +170,18 @@ WORKDIR /home/$USERNAME/colcon_ws/src
 COPY --chown=$USER_UID:$USER_GID sim.repos orca5
 RUN vcs import --recursive < orca5/sim.repos
 
+# Copy sim-only orca5 package.xml files
+WORKDIR /home/$USERNAME/colcon_ws
+COPY --chown=$USER_UID:$USER_GID orca_gz/package.xml src/orca5/orca_gz/
+COPY --chown=$USER_UID:$USER_GID orca_test/package.xml src/orca5/orca_test/
+
 # Run rosdep over sim repos
 WORKDIR /home/$USERNAME/colcon_ws
-RUN sudo apt-get update \
+RUN rm -f src/orca5/COLCON_IGNORE \
+  && sudo apt-get update \
   && rosdep update \
-  && rosdep install -y --from-paths . --ignore-src
+  && rosdep install -y --from-paths . --ignore-src \
+  && touch src/orca5/COLCON_IGNORE
 
 # Build everything so far
 WORKDIR /home/$USERNAME/colcon_ws
