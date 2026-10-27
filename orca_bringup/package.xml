@@ -14,9 +14,7 @@
   <exec_depend>urdf</exec_depend>
 
   <!-- Required for sim.launch.py -->
-  <!-- <depend>ardupilot_gazebo</depend> -->
-  <!-- <depend>ros_gz_bridge</depend> -->
-  <!-- <depend>ros_gz_image</depend> -->
+  <!-- <exec_depend>orca_gz</exec_depend> -->
 
   <!-- Required for cal.launch.py -->
   <!-- <depend>image_pipeline</depend> -->

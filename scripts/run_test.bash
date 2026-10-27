@@ -28,7 +28,7 @@ fi
 cd /home/orca5/colcon_ws
 
 echo "==> Building orca5 packages..."
-colcon build --packages-select orca_msgs orca_bridge orca_bringup orca_test
+colcon build --packages-select orca_msgs orca_bridge orca_gz orca_bringup orca_test
 source install/local_setup.bash
 
 echo "==> Running launch tests (speedup=$SPEEDUP)..."

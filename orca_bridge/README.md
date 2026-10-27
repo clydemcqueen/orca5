@@ -89,11 +89,11 @@ This is the world frame defined by ROS REP 105.
 
 This is the frame of the robot as defined by ROS REP 105.
 
-For the simulation this is defined by the [SDF file](orca_bringup/models/orca5/model.sdf.in) as the center of the thrust plane.
+For the simulation this is defined by the [SDF file](../orca_gz/models/orca5/model.sdf.in) as the center of the thrust plane.
 
 ### camera_link (link)
 
-This is defined by the [SDF file](orca_bringup/models/orca5/model.sdf.in) as the center of the camera sensor relative to base_link.
+This is defined by the [SDF file](../orca_gz/models/orca5/model.sdf.in) as the center of the camera sensor relative to base_link.
 The camera is down-facing, so it is pitched forward by 90 degrees.
 
 ### camera_sensor (camera)

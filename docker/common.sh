@@ -66,6 +66,7 @@ get_dri_group_flags() {
 }
 
 # Ensure the Docker image exists, or build it
+# NOTE: this does not re-build the image if something has changed
 ensure_image() {
     local tag="$1"
     local target="$2"
