@@ -71,6 +71,18 @@ def generate_launch_description():
                 ('path', 'slam_path'),
             ],
         ),
+        # Launch ocean current generator (defaults to [0, 0, 0] current)
+        Node(
+            package='orca_gz',
+            executable='ocean_current_generator.py',
+            name='ocean_current_generator',
+            output='screen',
+            parameters=[
+                {
+                    'use_sim_time': True,
+                }
+            ],
+        ),
         # Bag useful topics
         ExecuteProcess(
             cmd=[
@@ -88,6 +100,7 @@ def generate_launch_description():
                 '/ekf_status_report',
                 '/heartbeat',
                 '/model/orca5/odometry',
+                '/ocean_current',
                 '/rosout',
                 '/slam_delta',
                 '/slam_path',
