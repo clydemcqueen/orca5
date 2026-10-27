@@ -30,5 +30,7 @@ VISO_POS_X 0
 VISO_POS_Y 0
 VISO_POS_Z 0
 
-# Account for SLAM pipeline delays
-VISO_DELAY_MS 200
+# 50 ms for frame window midpoint + 50 ms SLAM delay (measured on dive7)
+VISO_DELAY_MS 100
+
+# TODO tune PSC_D_ACC_* values to stiffen up response
