@@ -89,9 +89,30 @@ class LowPassFilter:
 
 
 class SlamMap:
-    """A single SLAM map"""
+    """
+    A single SLAM map
 
-    def __init__(self, map_id: int, sonar_rf: float, slam_rf: float, t_map_base: geometry.Pose, logger):
+    The SLAM map is accurate up to a scale. We establish a scale as follows:
+    -- Set the scale at 1.0 (works great if we init about 1m away.
+    -- Wait for a good sonar reading and a SLAM lock.
+    -- Once the good readings start, use a low pass filter to adjust the scale.
+    -- After 5 seconds lock it in.
+
+    This works pretty well if we init the ROV relatively close to a hard substrate.
+    """
+
+    def __init__(
+        self,
+        map_id: int,
+        sonar_rf: float,
+        slam_rf: float,
+        t_map_slam: geometry.Pose,
+        stamp_s: float,
+        roll: float,
+        pitch: float,
+        logger,
+        scale_freeze_duration: float = 5.0,
+    ):
         # The map id from ORB_SLAM3
         self.map_id = map_id
 
@@ -102,35 +123,70 @@ class SlamMap:
         # Scale factor for this map. Default to 1.0 until we get a good reading, then use a low pass filter
         self.scale = 1.0
         self.scale_filter = LowPassFilter(0.1)
-        self.update_scale(sonar_rf, slam_rf, logger)
+        self.scale_freeze_duration = scale_freeze_duration
+        self.first_scale_time: float | None = None
+        self.scale_frozen = False
 
-        # Initialize map -> slam from map -> base
-        self.t_map_slam = t_map_base
+        self.update_scale(sonar_rf, slam_rf, stamp_s, roll, pitch, logger)
 
-        # The latest pose of the base link in the slam frame
+        # Initialize map -> slam
+        self.t_map_slam = t_map_slam
+
+        # The latest unscaled pose of the base link in the slam frame
         self.t_slam_base: geometry.Pose | None = None
 
-    def update_scale(self, sonar_rf: float, slam_rf: float, logger):
-        self.sonar_rf = sonar_rf
-        self.slam_rf = slam_rf
+    def update_scale(
+        self,
+        sonar_rf: float,
+        slam_rf: float,
+        stamp_s: float,
+        roll: float,
+        pitch: float,
+        logger,
+    ):
+        if self.scale_frozen:
+            return
+
+        # Slant range correction:
+        # Both sonar and camera point downwards along base_link -Z.
+        # When tilted by roll and pitch, the vertical projection is cos(pitch) * cos(roll).
+        cos_tilt = math.cos(pitch) * math.cos(roll)
+        if cos_tilt < 0.5:
+            # Vehicle tilted beyond 60 degrees; drop scale update
+            return
+
+        sonar_rf_vert = sonar_rf * cos_tilt
+        slam_rf_vert = slam_rf * cos_tilt
+
+        self.sonar_rf = sonar_rf_vert
+        self.slam_rf = slam_rf_vert
 
         # Hard limits
-        if slam_rf < 0.1 or slam_rf > 10.0:
-            # logger.warn(f'slam_rf too low/high, dropping: {slam_rf:.3f}m')
+        if slam_rf_vert < 0.1 or slam_rf_vert > 10.0:
+            # logger.warn(f'slam_rf too low/high, dropping: {slam_rf_vert:.3f}m')
             return
-        if sonar_rf < 0.1 or sonar_rf > 10.0:
-            # logger.warn(f'sonar_rf too low/high, dropping: {sonar_rf:.3f}m')
+        if sonar_rf_vert < 0.1 or sonar_rf_vert > 10.0:
+            # logger.warn(f'sonar_rf too low/high, dropping: {sonar_rf_vert:.3f}m')
             return
 
         # Try to prevent sonar reflections
-        instant_scale = sonar_rf / slam_rf
+        instant_scale = sonar_rf_vert / slam_rf_vert
         if self.scale_filter.value is not None:
-            expected_sonar_rf = slam_rf * self.scale
-            if abs(sonar_rf - expected_sonar_rf) > 0.3 * expected_sonar_rf:
-                logger.warn(f'sonar_rf jumped, dropping: {sonar_rf:.3f}m')
+            expected_sonar_rf = slam_rf_vert * self.scale
+            if abs(sonar_rf_vert - expected_sonar_rf) > 0.3 * expected_sonar_rf:
+                logger.warn(f'sonar_rf jumped, dropping: {sonar_rf_vert:.3f}m')
                 return
 
         self.scale = self.scale_filter.update(instant_scale)
+
+        # Freeze after duration has elapsed from the first valid scale measurement
+        if self.first_scale_time is None:
+            self.first_scale_time = stamp_s
+        elif stamp_s - self.first_scale_time >= self.scale_freeze_duration:
+            self.scale_frozen = True
+            logger.info(
+                f'Map {self.map_id} scale frozen at {self.scale:.4f} after {stamp_s - self.first_scale_time:.2f}s'
+            )
 
     def update_pose(self, t_slam_base: geometry.Pose):
         self.t_slam_base = t_slam_base
@@ -146,7 +202,15 @@ class SlamMaps:
         # The current map
         self.current_map: SlamMap | None = None
 
-    def update(self, msg: orb_slam3_msgs.msg.SlamStatus, sub: sub.Sub, logger):
+    def update(
+        self,
+        msg: orb_slam3_msgs.msg.SlamStatus,
+        sub: sub.Sub,
+        t_link_base: geometry.Pose,
+        t_slam_world: geometry.Pose,
+        logger,
+        scale_freeze_duration: float = 5.0,
+    ):
         # Only trust the map data if we are tracking
         if msg.tracking_state != orb_slam3_msgs.msg.SlamStatus.TRACKING_OK:
             logger.error('Not tracking, do not update')
@@ -158,11 +222,35 @@ class SlamMaps:
             return
 
         slam_rf_distance = rf_distance(msg)
+        stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
+        roll, pitch, _ = sub.t_map_base_ned.get_euler()
 
         if self.current_map is None or msg.map_id not in self.maps:
             logger.info(f'Create map {msg.map_id}')
-            t_map_base = sub.t_map_base_ned.ned_to_enu_frame()  # Use axes-only conversion
-            self.maps[msg.map_id] = SlamMap(msg.map_id, sonar_rf_distance, slam_rf_distance, t_map_base, logger)
+            # EKF pose in ENU map frame (swaps axes and adds 90d yaw rotation)
+            t_map_base_ekf = sub.t_map_base_ned.ned_to_enu_standard()
+
+            # Initial base pose in slam frame at frame 0 (unscaled, camera at identity)
+            t_world_camera_0 = geometry.Pose()
+            t_slam_camera_0 = t_slam_world.mult(t_world_camera_0)
+            t_slam_link_0 = t_slam_camera_0.mult(geometry.Pose.T_OPENCV_FLU)
+            t_slam_base_0 = t_slam_link_0.mult(t_link_base)
+
+            # Initialize map -> slam such that t_map_base = t_map_slam * t_slam_base matches t_map_base_ekf
+            # and aligns the map coordinate frame with gravity:
+            t_map_slam = t_map_base_ekf.mult(t_slam_base_0.inverse())
+
+            self.maps[msg.map_id] = SlamMap(
+                msg.map_id,
+                sonar_rf_distance,
+                slam_rf_distance,
+                t_map_slam,
+                stamp_s,
+                roll,
+                pitch,
+                logger,
+                scale_freeze_duration=scale_freeze_duration,
+            )
             self.current_map = self.maps[msg.map_id]
         else:
             if self.current_map.map_id != msg.map_id:
@@ -170,4 +258,4 @@ class SlamMaps:
                 # Sadly, we lose the old pose and scale information.
                 logger.error(f'Switch to map {msg.map_id} -- WTF')
                 self.current_map = self.maps[msg.map_id]
-            self.current_map.update_scale(sonar_rf_distance, slam_rf_distance, logger)
+            self.current_map.update_scale(sonar_rf_distance, slam_rf_distance, stamp_s, roll, pitch, logger)

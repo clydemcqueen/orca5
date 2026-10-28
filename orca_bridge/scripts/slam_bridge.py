@@ -50,6 +50,11 @@ class MonoSlamBridge(rclpy.node.Node):
         # Expected frame rate
         self.frame_rate = self.declare_parameter('frame_rate', 10).get_parameter_value().integer_value
 
+        # Duration before freezing the scale factor (s)
+        self.scale_freeze_duration = (
+            self.declare_parameter('scale_freeze_duration', 5.0).get_parameter_value().double_value
+        )
+
         # Max delta for position and rotation to be considered an outlier
         self.max_delta_pos = self.declare_parameter('max_delta_pos', 0.5).get_parameter_value().double_value
         self.max_delta_rot = self.declare_parameter('max_delta_rot', math.pi / 6).get_parameter_value().double_value
@@ -241,7 +246,14 @@ class MonoSlamBridge(rclpy.node.Node):
             # Start sending VPD messages. Tell the EKF to use them
             self.set_ekf_sources(slam_tracking=True)
 
-        self.maps.update(msg, self.sub, self.get_logger())
+        self.maps.update(
+            msg,
+            self.sub,
+            self.t_link_base,  # type: ignore
+            self.t_slam_world,
+            self.get_logger(),
+            scale_freeze_duration=self.scale_freeze_duration,
+        )
 
         current_map = self.maps.current_map
         if current_map is None:
@@ -252,11 +264,8 @@ class MonoSlamBridge(rclpy.node.Node):
         # This will give us 2 map -> base transforms: one from the EKF, one from the SLAM map
         # ----------
 
-        # We are given the pose of the camera sensor in the world frame
+        # We are given the pose of the camera sensor in the world frame (unscaled)
         t_world_camera = geometry.Pose.from_pose_msg(msg.pose)
-
-        # Apply the current SLAM scale
-        t_world_camera.apply_scale(current_map.scale)
 
         # Find the pose of the camera sensor in the SLAM map frame
         t_slam_camera = self.t_slam_world.mult(t_world_camera)
@@ -264,27 +273,38 @@ class MonoSlamBridge(rclpy.node.Node):
         # Find the pose of camera_link (ENU) in the SLAM map frame
         t_slam_link = t_slam_camera.mult(geometry.Pose.T_OPENCV_FLU)
 
-        # Find the pose of the base link (the ROV) in the SLAM map frame
+        # Find the unscaled pose of the base link (the ROV) in the SLAM map frame
         t_slam_base = t_slam_link.mult(self.t_link_base)
 
-        # Calculate the delta from the previous pose
+        # Calculate the unscaled delta from the previous pose
         if current_map.t_slam_base is None:
-            delta = geometry.Pose()
+            delta_unscaled = geometry.Pose()
         else:
-            delta = geometry.Pose.delta_pose(current_map.t_slam_base, t_slam_base)
+            delta_unscaled = geometry.Pose.delta_pose(current_map.t_slam_base, t_slam_base)
 
-        delta_p = delta.get_position()
-        delta_e = delta.get_euler()
+        # Scale deltas, not poses: scale translation by current_map.scale
+        scale = current_map.scale
+        delta_p = (
+            delta_unscaled.p[0] * scale,
+            delta_unscaled.p[1] * scale,
+            delta_unscaled.p[2] * scale,
+        )
+        delta_e = delta_unscaled.get_euler()
+        delta = geometry.Pose(p=delta_p, q=delta_unscaled.q)
 
         # Detect outliers, but allow them
         if self.is_outlier(delta_p, delta_e):
             flags |= orca_msgs.msg.BridgeStatus.OK_OUTLIER
 
-        # Save the current slam->base transform
+        # Save the current unscaled slam->base transform
         current_map.update_pose(t_slam_base)
 
-        # Find the pose of the base link (the ROV) in the map frame
-        t_map_base = current_map.t_map_slam.mult(t_slam_base)
+        # Find the pose of the base link (the ROV) in the map frame using scaled absolute pose
+        t_slam_base_scaled = geometry.Pose(
+            p=(t_slam_base.p[0] * scale, t_slam_base.p[1] * scale, t_slam_base.p[2] * scale),
+            q=t_slam_base.q,
+        )
+        t_map_base = current_map.t_map_slam.mult(t_slam_base_scaled)
 
         # ----------
         # Send a VISION_POSITION_DELTA (VPD) message to ArduSub
