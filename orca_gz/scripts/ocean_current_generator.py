@@ -11,6 +11,7 @@ Each axis supports a combination of:
 All parameters can be updated dynamically at runtime via `ros2 param set`.
 """
 
+import array
 import math
 import random
 from typing import List
@@ -18,8 +19,9 @@ from typing import List
 import geometry_msgs.msg
 import rclpy
 import rclpy.node
-from rcl_interfaces.msg import Parameter, SetParametersResult
+from rcl_interfaces.msg import SetParametersResult
 from rclpy.executors import ExternalShutdownException
+from rclpy.parameter import Parameter
 
 
 class OceanCurrentGenerator(rclpy.node.Node):
@@ -27,21 +29,31 @@ class OceanCurrentGenerator(rclpy.node.Node):
         super().__init__('ocean_current_generator')
 
         # Update rate in Hz (configured at startup)
-        self.rate_hz: float = float(self.declare_parameter('rate_hz', 10.0).value)
+        self.rate_hz: float = self.declare_parameter('rate_hz', 10.0).get_parameter_value().double_value
         if self.rate_hz <= 0.0:
             self.rate_hz = 10.0
         self.dt: float = 1.0 / self.rate_hz
 
         # Random seed (-1 = non-deterministic system seed)
-        self.seed: int = int(self.declare_parameter('seed', -1).value)
+        self.seed: int = self.declare_parameter('seed', -1).get_parameter_value().integer_value
         self.rng = random.Random(self.seed if self.seed >= 0 else None)
 
         # Per-axis [x, y, z] parameters in the ENU world frame
-        self.mean: List[float] = list(self.declare_parameter('mean', [0.0, 0.0, 0.0]).value)
-        self.mu: List[float] = list(self.declare_parameter('mu', [0.5, 0.5, 0.5]).value)
-        self.sigma: List[float] = list(self.declare_parameter('sigma', [0.0, 0.0, 0.0]).value)
-        self.sine_amp: List[float] = list(self.declare_parameter('sine_amp', [0.0, 0.0, 0.0]).value)
-        self.sine_freq: List[float] = list(self.declare_parameter('sine_freq', [0.05, 0.05, 0.2]).value)
+        self.mean: List[float] = list(
+            self.declare_parameter('mean', [0.0, 0.0, 0.0]).get_parameter_value().double_array_value
+        )
+        self.mu: List[float] = list(
+            self.declare_parameter('mu', [0.5, 0.5, 0.5]).get_parameter_value().double_array_value
+        )
+        self.sigma: List[float] = list(
+            self.declare_parameter('sigma', [0.0, 0.0, 0.0]).get_parameter_value().double_array_value
+        )
+        self.sine_amp: List[float] = list(
+            self.declare_parameter('sine_amp', [0.0, 0.0, 0.0]).get_parameter_value().double_array_value
+        )
+        self.sine_freq: List[float] = list(
+            self.declare_parameter('sine_freq', [0.05, 0.05, 0.2]).get_parameter_value().double_array_value
+        )
 
         # Zero-mean Gauss-Markov state per axis
         self.gm_state: List[float] = [0.0, 0.0, 0.0]
@@ -59,21 +71,39 @@ class OceanCurrentGenerator(rclpy.node.Node):
     def parameters_callback(self, params: List[Parameter]) -> SetParametersResult:
         for param in params:
             if param.name in ('mean', 'mu', 'sigma', 'sine_amp', 'sine_freq'):
-                val = list(param.value)
-                if len(val) != 3:
+                if not isinstance(param.value, (list, tuple, array.array)):
                     return SetParametersResult(
                         successful=False,
                         reason=f'Parameter {param.name} must be a 3-element array [x, y, z]',
                     )
-                setattr(self, param.name, [float(v) for v in val])
+                if len(param.value) != 3:
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f'Parameter {param.name} must be a 3-element array [x, y, z]',
+                    )
+                new_val = [float(v) for v in param.value]
+                old_val = getattr(self, param.name)
+                setattr(self, param.name, new_val)
+                if new_val != old_val:
+                    self.get_logger().info(f'Parameter {param.name} changed from {old_val} to {new_val}')
                 if param.name == 'sigma':
                     for i in range(3):
                         if self.sigma[i] == 0.0:
                             self.gm_state[i] = 0.0
             elif param.name == 'seed':
-                self.seed = int(param.value)
+                if not isinstance(param.value, int):
+                    return SetParametersResult(
+                        successful=False,
+                        reason='Parameter seed must be an integer',
+                    )
+                old_seed = self.seed
+                self.seed = param.value
                 self.rng = random.Random(self.seed if self.seed >= 0 else None)
                 self.gm_state = [0.0, 0.0, 0.0]
+                if self.seed != old_seed:
+                    self.get_logger().info(f'Parameter seed changed from {old_seed} to {self.seed}')
+                else:
+                    self.get_logger().info(f'Parameter seed set to {self.seed}')
 
         return SetParametersResult(successful=True)
 

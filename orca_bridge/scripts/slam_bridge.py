@@ -5,6 +5,7 @@ Monocular SLAM to ArduSub bridge
 """
 
 import math
+from typing import List
 
 import builtin_interfaces.msg
 import geometry_msgs.msg
@@ -16,7 +17,9 @@ import rclpy.node
 import rclpy.time
 import std_srvs.srv
 import tf2_ros
+from rcl_interfaces.msg import SetParametersResult
 from rclpy.executors import ExternalShutdownException
+from rclpy.parameter import Parameter
 
 import orca_msgs.msg
 from orca_bridge import geometry, slam, sub
@@ -58,6 +61,12 @@ class MonoSlamBridge(rclpy.node.Node):
         # Max delta for position and rotation to be considered an outlier
         self.max_delta_pos = self.declare_parameter('max_delta_pos', 0.5).get_parameter_value().double_value
         self.max_delta_rot = self.declare_parameter('max_delta_rot', math.pi / 6).get_parameter_value().double_value
+
+        # Use VISION_POSITION_ESTIMATE (VPE) instead of VISION_POSITION_DELTA (VPD)
+        self.use_vpe = self.declare_parameter('use_vpe', False).get_parameter_value().bool_value
+        self.vpe_reset_counter: int = 0
+        self.last_map_id: int | None = None
+        self.add_on_set_parameters_callback(self.parameters_callback)
 
         # Static transform slam -> world
         self.t_slam_world = geometry.Pose()
@@ -130,6 +139,17 @@ class MonoSlamBridge(rclpy.node.Node):
         tf_msg.child_frame_id = 'camera_sensor'
         tf_msg.transform = geometry.Pose.T_FLU_OPENCV.to_transform_msg()
         self.tf_static_broadcaster.sendTransform(tf_msg)
+
+    def parameters_callback(self, params: List[Parameter]) -> SetParametersResult:
+        for param in params:
+            if param.name == 'use_vpe':
+                new_use_vpe = bool(param.value)
+                if new_use_vpe != self.use_vpe:
+                    self.get_logger().info(f'Switching use_vpe from {self.use_vpe} to {new_use_vpe}')
+                    self.use_vpe = new_use_vpe
+                    if self.use_vpe:
+                        self.vpe_reset_counter = (self.vpe_reset_counter + 1) % 256
+        return SetParametersResult(successful=True)
 
     def set_ekf_sources(self, slam_tracking: bool):
         """
@@ -259,6 +279,11 @@ class MonoSlamBridge(rclpy.node.Node):
         if current_map is None:
             return
 
+        if self.last_map_id is None or self.last_map_id != current_map.map_id:
+            if self.last_map_id is not None:
+                self.vpe_reset_counter = (self.vpe_reset_counter + 1) % 256
+            self.last_map_id = current_map.map_id
+
         # ----------
         # We have t_world_camera, use this to find map -> base.
         # This will give us 2 map -> base transforms: one from the EKF, one from the SLAM map
@@ -307,20 +332,38 @@ class MonoSlamBridge(rclpy.node.Node):
         t_map_base = current_map.t_map_slam.mult(t_slam_base_scaled)
 
         # ----------
-        # Send a VISION_POSITION_DELTA (VPD) message to ArduSub
+        # Send a VISION_POSITION_DELTA (VPD) or VISION_POSITION_ESTIMATE (VPE) message to ArduSub
         # ----------
 
-        # Convert FLU (forward, left, up) to FRD (forward, right, down)
-        delta_p_frd = (delta_p[0], -delta_p[1], -delta_p[2])
-        delta_e_frd = (delta_e[0], -delta_e[1], -delta_e[2])
+        if self.use_vpe:
+            t_map_base_ned = t_map_base.enu_to_ned_standard()
+            p_ned = t_map_base_ned.p
+            roll, pitch, yaw = t_map_base_ned.get_euler()
+            usec = int(stamp_to_s(msg.header.stamp) * 1e6)
 
-        self.conn.mav.vision_position_delta_send(
-            0,  # time_usec (not used)
-            1000000 // self.frame_rate,  # delta usec
-            delta_e_frd,
-            delta_p_frd,
-            100,  # confidence, assume 100%
-        )
+            self.conn.mav.vision_position_estimate_send(
+                usec,
+                float(p_ned[0]),
+                float(p_ned[1]),
+                float(p_ned[2]),
+                float(roll),
+                float(pitch),
+                float(yaw),
+                (0.0,) * 21,
+                self.vpe_reset_counter,
+            )
+        else:
+            # Convert FLU (forward, left, up) to FRD (forward, right, down)
+            delta_p_frd = (delta_p[0], -delta_p[1], -delta_p[2])
+            delta_e_frd = (delta_e[0], -delta_e[1], -delta_e[2])
+
+            self.conn.mav.vision_position_delta_send(
+                0,  # time_usec (not used)
+                1000000 // self.frame_rate,  # delta usec
+                delta_e_frd,
+                delta_p_frd,
+                100,  # confidence, assume 100%
+            )
 
         # Publish the map -> slam transform
         tf_msg = geometry_msgs.msg.TransformStamped()
