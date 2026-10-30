@@ -379,6 +379,20 @@ class OrcaSimHarness:
 
         raise TimeoutError(f'Timed out waiting for {service_name} response within {timeout_s}s')
 
+    def set_slam_enabled(self, enabled: bool, timeout_s: float = 10.0) -> bool:
+        """Enable or disable SLAM processing on orb_slam3_mono_node."""
+        return self.set_node_parameters(
+            'orb_slam3_mono_node',
+            [
+                rclpy.parameter.Parameter(
+                    'enable_slam',
+                    rclpy.parameter.Parameter.Type.BOOL,
+                    enabled,
+                )
+            ],
+            timeout_s=timeout_s,
+        )
+
     def get_position_deviations(
         self,
         samples: Optional[List[Tuple[float, float, float]]] = None,

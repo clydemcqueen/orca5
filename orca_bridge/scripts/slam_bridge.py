@@ -12,10 +12,10 @@ import geometry_msgs.msg
 import orb_slam3_msgs.msg
 import pymavlink.dialects.v20.ardupilotmega as apm
 import pymavlink.mavutil
+import rcl_interfaces.srv
 import rclpy
 import rclpy.node
 import rclpy.time
-import std_srvs.srv
 import tf2_ros
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.executors import ExternalShutdownException
@@ -112,7 +112,9 @@ class MonoSlamBridge(rclpy.node.Node):
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         # Service clients
-        self.reset_client = self.create_client(std_srvs.srv.Empty, 'reset_slam')
+        self.mono_param_client = self.create_client(
+            rcl_interfaces.srv.SetParameters, '/orb_slam3_mono_node/set_parameters'
+        )
 
         # Manage state on a 10 Hz timer
         self.timer = self.create_timer(0.1, self.timer_callback)
@@ -150,6 +152,13 @@ class MonoSlamBridge(rclpy.node.Node):
                     if self.use_vpe:
                         self.vpe_reset_counter = (self.vpe_reset_counter + 1) % 256
         return SetParametersResult(successful=True)
+
+    def set_enable_slam(self, enable: bool):
+        """Enable or disable SLAM on orb_slam3_mono_node."""
+        self.get_logger().info(f'{"Enabling" if enable else "Disabling"} SLAM')
+        req = rcl_interfaces.srv.SetParameters.Request()
+        req.parameters = [Parameter('enable_slam', Parameter.Type.BOOL, enable).to_parameter_msg()]
+        self.mono_param_client.call_async(req)
 
     def set_ekf_sources(self, slam_tracking: bool):
         """
@@ -400,12 +409,13 @@ class MonoSlamBridge(rclpy.node.Node):
         # Update ArduSub state
         self.sub.update(self.conn, now_s, self.get_logger())
 
-        # Reset SLAM if requested
-        if self.sub.button1:
-            self.get_logger().info('Resetting SLAM')
-            reset_request = std_srvs.srv.Empty.Request()
-            self.reset_client.call_async(reset_request)
-            self.sub.button1 = False
+        # Enable / disable SLAM if requested via joystick script buttons
+        if self.sub.button2:
+            self.set_enable_slam(True)
+            self.sub.button2 = False
+        if self.sub.button3:
+            self.set_enable_slam(False)
+            self.sub.button3 = False
 
         # Republish EKF_STATUS_REPORT
         ekf_status_msg = orca_msgs.msg.EkfStatusReport()

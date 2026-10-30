@@ -37,6 +37,11 @@ def generate_launch_description():
             description='Launch ORB_SLAM3?',
         ),
         DeclareLaunchArgument(
+            'enable_slam',
+            default_value='True',
+            description='Enable SLAM processing?',
+        ),
+        DeclareLaunchArgument(
             'rviz',
             default_value='True',
             description='Launch rviz?',
@@ -133,6 +138,7 @@ def generate_launch_description():
                 'use_sim_time': 'True',
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
+                'enable_slam': LaunchConfiguration('enable_slam'),
                 'mav_device': 'udpin:0.0.0.0:14551',
                 'settings_file': os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
             }.items(),

@@ -34,6 +34,11 @@ def generate_launch_description():
             description='Launch ORB_SLAM3?',
         ),
         DeclareLaunchArgument(
+            'enable_slam',
+            default_value='True',
+            description='Enable SLAM processing?',
+        ),
+        DeclareLaunchArgument(
             'mav_device',
             default_value='udpin:0.0.0.0:14551',
             description='MAVLink device address',
@@ -58,6 +63,7 @@ def generate_launch_description():
                     'voc_file': LaunchConfiguration('voc_file'),
                     'settings_file': LaunchConfiguration('settings_file'),
                     'world_frame_id': 'world',
+                    'enable_slam': LaunchConfiguration('enable_slam'),
                 }
             ],
             condition=IfCondition(LaunchConfiguration('orb')),
