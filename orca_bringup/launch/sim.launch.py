@@ -37,6 +37,11 @@ def generate_launch_description():
             description='Launch ORB_SLAM3?',
         ),
         DeclareLaunchArgument(
+            'enable_slam',
+            default_value='True',
+            description='Enable SLAM processing?',
+        ),
+        DeclareLaunchArgument(
             'rviz',
             default_value='True',
             description='Launch rviz?',
@@ -71,6 +76,18 @@ def generate_launch_description():
                 ('path', 'slam_path'),
             ],
         ),
+        # Launch ocean current generator (defaults to [0, 0, 0] current)
+        Node(
+            package='orca_gz',
+            executable='ocean_current_generator.py',
+            name='ocean_current_generator',
+            output='screen',
+            parameters=[
+                {
+                    'use_sim_time': True,
+                }
+            ],
+        ),
         # Bag useful topics
         ExecuteProcess(
             cmd=[
@@ -88,6 +105,7 @@ def generate_launch_description():
                 '/ekf_status_report',
                 '/heartbeat',
                 '/model/orca5/odometry',
+                '/ocean_current',
                 '/rosout',
                 '/slam_delta',
                 '/slam_path',
@@ -120,6 +138,7 @@ def generate_launch_description():
                 'use_sim_time': 'True',
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
+                'enable_slam': LaunchConfiguration('enable_slam'),
                 'mav_device': 'udpin:0.0.0.0:14551',
                 'settings_file': os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
             }.items(),

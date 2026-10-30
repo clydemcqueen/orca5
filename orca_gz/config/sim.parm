@@ -70,9 +70,9 @@ MNT1_PITCH_MIN -45
 MNT1_DEFLT_MODE 3
 MNT1_RC_RATE 30
 MNT1_TYPE 7
-PSC_D_ACC_P   0.2
-PSC_D_ACC_I   0.4
-PSC_D_ACC_FF  0.075
+# PSC_D_ACC_P   0.2
+# PSC_D_ACC_I   0.4
+# PSC_D_ACC_FF  0.075
 PSC_D_VEL_P   8
 PSC_D_POS_P   3
 PSC_NE_POS_P 2.5
@@ -162,3 +162,14 @@ SR1_EXTRA3 10
 SR1_POSITION 10
 SR1_RAW_SENS 10
 SR1_EXT_STAT 2
+
+# Use EKFType::THREE, not EKFType::SIM
+AHRS_EKF_TYPE 3
+
+# 50 ms for frame window midpoint + 20 ms SLAM delay (measured on fastr2)
+VISO_DELAY_MS 70
+
+# Match dive7 values, at least for now
+PSC_D_ACC_P   0.05
+PSC_D_ACC_I   0.01
+PSC_D_ACC_FF  0.0

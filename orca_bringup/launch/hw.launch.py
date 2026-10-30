@@ -136,6 +136,7 @@ def launch_setup(context, *args, **kwargs):
                 'use_sim_time': 'False',
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
+                'enable_slam': LaunchConfiguration('enable_slam'),
                 'mav_device': mav_device,
                 'settings_file': param_file_path,
             }.items(),
@@ -165,6 +166,11 @@ def generate_launch_description():
                 'orb',
                 default_value='True',
                 description='Launch ORB_SLAM3?',
+            ),
+            DeclareLaunchArgument(
+                'enable_slam',
+                default_value='False',
+                description='Enable SLAM processing?',
             ),
             DeclareLaunchArgument(
                 'rviz',

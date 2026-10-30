@@ -74,6 +74,7 @@ def generate_launch_description():
             arguments=[
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
                 '/model/orca5/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+                '/ocean_current@geometry_msgs/msg/Vector3]gz.msgs.Vector3d',
             ],
         ),
         # Publish a camera info message, required for rviz (not used by orb_slam3_ros)

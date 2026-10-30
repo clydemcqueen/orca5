@@ -342,6 +342,107 @@ class OrcaSimHarness:
         self.node.get_logger().info(f'Recorded {len(self.odometry_samples)} odometry samples')
         return list(self.odometry_samples)
 
+    def set_node_parameters(
+        self,
+        node_name: str,
+        parameters: List[rclpy.parameter.Parameter],
+        timeout_s: float = 10.0,
+    ) -> bool:
+        """Set parameters on a remote ROS 2 node."""
+        import rcl_interfaces.srv
+
+        clean_name = node_name.strip('/')
+        service_name = f'/{clean_name}/set_parameters'
+        client = self.node.create_client(rcl_interfaces.srv.SetParameters, service_name)
+
+        self.node.get_logger().info(f'Waiting for service {service_name}...')
+        start_time = time.time()
+        while not client.service_is_ready():
+            self.spin_once(0.05)
+            if time.time() - start_time > timeout_s:
+                raise TimeoutError(f'Service {service_name} not available within {timeout_s}s')
+
+        req = rcl_interfaces.srv.SetParameters.Request()
+        req.parameters = [p.to_parameter_msg() for p in parameters]
+
+        future = client.call_async(req)
+        while time.time() - start_time < timeout_s:
+            self.spin_once(0.05)
+            if future.done():
+                result = future.result()
+                if result is not None and all(r.successful for r in result.results):
+                    self.node.get_logger().info(f'Successfully set {len(parameters)} parameters on {clean_name}')
+                    return True
+                else:
+                    failures = [r.reason for r in result.results if not r.successful] if result else 'None'
+                    raise RuntimeError(f'Failed to set parameters on {clean_name}: {failures}')
+
+        raise TimeoutError(f'Timed out waiting for {service_name} response within {timeout_s}s')
+
+    def set_slam_enabled(self, enabled: bool, timeout_s: float = 10.0) -> bool:
+        """Enable or disable SLAM processing on orb_slam3_mono_node."""
+        return self.set_node_parameters(
+            'orb_slam3_mono_node',
+            [
+                rclpy.parameter.Parameter(
+                    'enable_slam',
+                    rclpy.parameter.Parameter.Type.BOOL,
+                    enabled,
+                )
+            ],
+            timeout_s=timeout_s,
+        )
+
+    def get_position_deviations(
+        self,
+        samples: Optional[List[Tuple[float, float, float]]] = None,
+    ) -> dict:
+        """Compute deviations from mean and peak-to-peak for a list of (x, y, z) odometry samples."""
+        if samples is None:
+            samples = self.odometry_samples
+
+        if len(samples) < 5:
+            raise AssertionError(f'Insufficient odometry samples collected ({len(samples)})')
+
+        mean_x = sum(p[0] for p in samples) / len(samples)
+        mean_y = sum(p[1] for p in samples) / len(samples)
+        mean_z = sum(p[2] for p in samples) / len(samples)
+
+        z_values = [p[2] for p in samples]
+        z_min = min(z_values)
+        z_max = max(z_values)
+        z_p2p = z_max - z_min
+        z_max_dev = max(abs(z - mean_z) for z in z_values)
+
+        xy_dists = [math.hypot(p[0] - mean_x, p[1] - mean_y) for p in samples]
+        xy_max_dev = max(xy_dists)
+        x_values = [p[0] for p in samples]
+        y_values = [p[1] for p in samples]
+        x_p2p = max(x_values) - min(x_values)
+        y_p2p = max(y_values) - min(y_values)
+        xy_p2p = math.hypot(x_p2p, y_p2p)
+
+        total_dists = [math.sqrt((p[0] - mean_x) ** 2 + (p[1] - mean_y) ** 2 + (p[2] - mean_z) ** 2) for p in samples]
+        total_max_dev = max(total_dists)
+
+        return {
+            'mean': (mean_x, mean_y, mean_z),
+            'z_max_dev': z_max_dev,
+            'z_p2p': z_p2p,
+            'xy_max_dev': xy_max_dev,
+            'xy_p2p': xy_p2p,
+            'total_max_dev': total_max_dev,
+        }
+
+    def print_position_deviations(self, label: str, dev: dict):
+        mean_x, mean_y, mean_z = dev['mean']
+        print(f'\n==================== {label} ====================')
+        print(f'  Centroid: x={mean_x:.4f} m, y={mean_y:.4f} m, z={mean_z:.4f} m')
+        print(f'  Z Dev from Mean (max): {dev["z_max_dev"]:.4f} m | Z Peak-to-Peak: {dev["z_p2p"]:.4f} m')
+        print(f'  Horizontal Dev from Mean (max): {dev["xy_max_dev"]:.4f} m | XY P2P: {dev["xy_p2p"]:.4f} m')
+        print(f'  3D Total Max Dev: {dev["total_max_dev"]:.4f} m')
+        print('==================================================\n', flush=True)
+
     def assert_position_held(
         self,
         samples: Optional[List[Tuple[float, float, float]]] = None,

@@ -21,6 +21,12 @@ if(BUILD_TESTING)
     TARGET test_dive_and_hold
     TIMEOUT 180
   )
+
+  add_launch_test(
+    test/test_vpe_hold.py
+    TARGET test_vpe_hold
+    TIMEOUT 300
+  )
 endif()
 
 ament_package()
