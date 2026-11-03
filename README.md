@@ -125,3 +125,4 @@ rangefinder like the [BlueRobotics Ping Sonar](https://www.bluerobotics.com) to 
 
 * v1: tested with ArduSub at b7ace6c6 (pre-4.7)
 * v2: tested with ArduSub at e5e97094 (during 4.7 release cycle, includes a SIM_JSON fix)
+* v3: tested with ArduSub at 383331ff (4.7.2-beta.1 on the ArduPilot-4.7 branch). The simulation also requires a patch for the SIM_JSON fix; see the Dockerfile.

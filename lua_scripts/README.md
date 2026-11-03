@@ -1,10 +1,11 @@
-# SLAM Reset
+# SLAM Control
 
 ## Setup
 
 * Copy [script_buttons.lua](script_buttons.lua) to `~/colcon_ws/scripts`.
-* Enable scripting and map `BTN0_SFUNCTION` to 108, see the [ArduSub parameters](../orca_gz/config/sim.parm)
+* Enable scripting and map set up button mapping, see [buttons.md](../orca_gz/config/buttons.md)
 
 ## Operation
 
-* Press shift-A on the Xbox controller.
+* shift D-pad Up: disable SLAM (and reset the SLAM map)
+* shift D-pad Down: enable SLAM

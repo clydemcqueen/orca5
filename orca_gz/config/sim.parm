@@ -1,42 +1,44 @@
 # Parameters for sub SITL
 
-# These are copied from ardupilot/Tools/autotest/default_params/sub.parm as of e5e97094
+# These are copied from ardupilot/Tools/autotest/default_params/sub.parm as of ap_4_7_fix_json_rng
+# BTN* are commented out
 # RNGFND1* are commented out
 ARSPD_PIN 1
 ARSPD_BUS 2
 BATT_MONITOR     4
-BTN0_FUNCTION    0
-BTN10_SFUNCTION  0
-BTN10_FUNCTION   22
-BTN10_SFUNCTION  0
-BTN11_FUNCTION   42
-BTN11_SFUNCTION  47
-BTN12_FUNCTION   43
-BTN12_SFUNCTION  46
-BTN13_FUNCTION   33
-BTN13_SFUNCTION  45
-BTN14_FUNCTION   32
-BTN14_SFUNCTION  44
-BTN15_FUNCTION   0
-BTN15_SFUNCTION  0
-BTN1_FUNCTION    6
-BTN1_SFUNCTION   0
-BTN2_FUNCTION    8
-BTN2_SFUNCTION   0
-BTN3_FUNCTION    7
-BTN3_SFUNCTION   0
-BTN4_FUNCTION    4
-BTN4_SFUNCTION   0
-BTN5_FUNCTION    1
-BTN5_SFUNCTION   0
-BTN6_FUNCTION    3
-BTN6_SFUNCTION   0
-BTN7_FUNCTION    21
-BTN7_SFUNCTION   0
-BTN8_FUNCTION    48
-BTN8_SFUNCTION   0
-BTN9_FUNCTION    23
-BTN9_SFUNCTION   0
+# Move BTN parameters to btn.parm
+# BTN0_FUNCTION    0
+# BTN10_SFUNCTION  0
+# BTN10_FUNCTION   22
+# BTN10_SFUNCTION  0
+# BTN11_FUNCTION   42
+# BTN11_SFUNCTION  47
+# BTN12_FUNCTION   43
+# BTN12_SFUNCTION  46
+# BTN13_FUNCTION   33
+# BTN13_SFUNCTION  45
+# BTN14_FUNCTION   32
+# BTN14_SFUNCTION  44
+# BTN15_FUNCTION   0
+# BTN15_SFUNCTION  0
+# BTN1_FUNCTION    6
+# BTN1_SFUNCTION   0
+# BTN2_FUNCTION    8
+# BTN2_SFUNCTION   0
+# BTN3_FUNCTION    7
+# BTN3_SFUNCTION   0
+# BTN4_FUNCTION    4
+# BTN4_SFUNCTION   0
+# BTN5_FUNCTION    1
+# BTN5_SFUNCTION   0
+# BTN6_FUNCTION    3
+# BTN6_SFUNCTION   0
+# BTN7_FUNCTION    21
+# BTN7_SFUNCTION   0
+# BTN8_FUNCTION    48
+# BTN8_SFUNCTION   0
+# BTN9_FUNCTION    23
+# BTN9_SFUNCTION   0
 COMPASS_OFS_X   5
 COMPASS_OFS_Y   13
 COMPASS_OFS_Z   -18
@@ -70,9 +72,9 @@ MNT1_PITCH_MIN -45
 MNT1_DEFLT_MODE 3
 MNT1_RC_RATE 30
 MNT1_TYPE 7
-PSC_D_ACC_P   0.2
-PSC_D_ACC_I   0.4
-PSC_D_ACC_FF  0.075
+# PSC_D_ACC_P   0.2
+# PSC_D_ACC_I   0.4
+# PSC_D_ACC_FF  0.075
 PSC_D_VEL_P   8
 PSC_D_POS_P   3
 PSC_NE_POS_P 2.5
@@ -89,7 +91,7 @@ SERVO8_MIN 1100
 BARO_EXT_BUS 1
 PILOT_ACCEL_Z 200
 PILOT_SPEED_UP 200
-PSC_JERK_D 8
+PSC_D_JERK 8
 LOG_BITMASK      180222
 SIM_BARO_RND     0.02
 RC_OPTIONS 0
@@ -147,12 +149,13 @@ EK3_SRC2_YAW 1              # Compass
 # Do not enable "use all velocities"
 EK3_SRC_OPTIONS 0
 
-# Enable Lua scripting and assign joystick buttons
+# Enable Lua scripting
 SCR_ENABLE 1
-BTN0_SFUNCTION 108  # shift A
-BTN1_SFUNCTION 109  # shift B
-BTN2_SFUNCTION 110  # shift X
-BTN3_SFUNCTION 111  # shift Y
+
+# Waypoint navigation speed
+WP_SPD 0.2
+WP_SPD_UP 0.2
+WP_SPD_DN 0.2
 
 # Set up stream rates for key messages if QGC / BlueOS / Cockpit are not running
 # TODO this is a big hammer, we need just a few messages. Add checks in slam_bridge
@@ -162,3 +165,19 @@ SR1_EXTRA3 10
 SR1_POSITION 10
 SR1_RAW_SENS 10
 SR1_EXT_STAT 2
+
+# Use EKFType::THREE, not EKFType::SIM
+AHRS_EKF_TYPE 3
+
+# 50 ms for frame window midpoint + 20 ms SLAM delay (measured on fastr2)
+VISO_DELAY_MS 70
+
+# Match dive7 values, at least for now
+PSC_D_ACC_P   0.05
+PSC_D_ACC_I   0.01
+PSC_D_ACC_FF  0.0
+
+# Roll rate damping can cause 12 Hz chatter, disable it for dive9
+ATC_RAT_RLL_D 0
+ATC_RAT_RLL_P 0
+ATC_RAT_RLL_I 0

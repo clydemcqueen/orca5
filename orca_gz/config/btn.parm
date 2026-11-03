@@ -1,0 +1,36 @@
+# Joystick button assignments (orca5_1)
+BTN0_FUNCTION    1    # A                   shift
+BTN0_SFUNCTION   1    # shift A             shift
+BTN1_FUNCTION    5    # B                   MANUAL
+BTN1_SFUNCTION   8    # shift B             POSHOLD
+BTN2_FUNCTION    7    # X                   ALT_HOLD
+BTN2_SFUNCTION   11   # shift X             GUIDED
+BTN3_FUNCTION    6    # Y                   STABILIZE
+BTN3_SFUNCTION   13   # shift Y             SURFTRAK
+
+BTN4_FUNCTION    4    # View                disarm
+BTN4_SFUNCTION   4    # shift View          disarm
+BTN5_FUNCTION    1    # Guide               shift
+BTN5_SFUNCTION   1    # shift Guide         shift
+BTN6_FUNCTION    3    # Menu                arm
+BTN6_SFUNCTION   3    # shift Menu          arm
+
+BTN7_FUNCTION    0    # LS click
+BTN7_SFUNCTION   0    # shift LS click
+BTN8_FUNCTION    0    # RS click
+BTN8_SFUNCTION   0    # shift RS click
+
+BTN9_FUNCTION    23   # LB                  mount tilt down
+BTN9_SFUNCTION   27   # shift LB            mount pan left
+BTN10_FUNCTION   22   # RB                  mount tilt up
+BTN10_SFUNCTION  26   # shift RB            mount pan right
+
+BTN11_FUNCTION   42   # D-pad Up            gain inc
+BTN12_FUNCTION   43   # D-pad Down          gain dec
+BTN13_FUNCTION   33   # D-pad Left          lights 1 dimmer
+BTN14_FUNCTION   32   # D-pad Right         lights 1 brighter
+
+BTN11_SFUNCTION  109  # shift-dpad-up       script_2
+BTN12_SFUNCTION  110  # shift-dpad-down     script_3
+BTN13_SFUNCTION  111  # shift-dpad-left     script_4
+BTN14_SFUNCTION  108  # shift-dpad-right    script_1

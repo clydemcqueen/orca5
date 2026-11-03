@@ -17,12 +17,13 @@ EK3_SRC2_YAW 1              # Compass
 # Do not enable "use all velocities"
 EK3_SRC_OPTIONS 0
 
-# Enable Lua scripting and assign joystick buttons
+# Enable Lua scripting
 SCR_ENABLE 1
-BTN0_SFUNCTION 108  # shift A
-BTN1_SFUNCTION 109  # shift B
-BTN2_SFUNCTION 110  # shift X
-BTN3_SFUNCTION 111  # shift Y
+
+# Waypoint navigation speed
+WP_SPD 0.2
+WP_SPD_UP 0.2
+WP_SPD_DN 0.2
 
 # SlamBridge uses tf transforms to generate poses in the sub body frame, so set these to "no transform"
 VISO_ORIENT 0
@@ -30,5 +31,12 @@ VISO_POS_X 0
 VISO_POS_Y 0
 VISO_POS_Z 0
 
-# Account for SLAM pipeline delays
-VISO_DELAY_MS 200
+# 50 ms for frame window midpoint + 50 ms SLAM delay (measured on dive7)
+VISO_DELAY_MS 100
+
+# TODO tune PSC_D_ACC_* values to stiffen up response
+
+# Roll rate damping can cause 12 Hz chatter, disable it for dive9
+ATC_RAT_RLL_D 0
+ATC_RAT_RLL_P 0
+ATC_RAT_RLL_I 0
