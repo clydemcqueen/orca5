@@ -1,11 +1,12 @@
 --[[
 Monitor joystick buttons and send STATUSTEXT messages.
 
-This will map the script buttons to the _shifted_ XBox controller buttons A, B, X, Y:
-param set BTN0_SFUNCTION 108
-param set BTN1_SFUNCTION 109
-param set BTN2_SFUNCTION 110
-param set BTN3_SFUNCTION 111
+This will map the script buttons to the _shifted_ XBox dpad buttons:
+
+BTN11_SFUNCTION  109  # shift-dpad-up       script_2
+BTN12_SFUNCTION  110  # shift-dpad-down     script_3
+BTN13_SFUNCTION  111  # shift-dpad-left     script_4
+BTN14_SFUNCTION  108  # shift-dpad-right    script_1
 ]]--
 
 local UPDATE_MS = 100

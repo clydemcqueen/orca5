@@ -312,7 +312,7 @@ def main():
         '-f',
         '--file',
         default=default_parm_path,
-        help=f'Path to parameter file (default: {default_parm_path})',
+        help=f'Path to parameter file(s), comma-separated (default: {default_parm_path})',
     )
     parser.add_argument(
         '-d',
@@ -355,10 +355,14 @@ def main():
 
     args = parser.parse_args()
 
-    # Parse target parameter file
+    # Parse target parameter file(s)
+    file_list = [f.strip() for f in args.file.split(',') if f.strip()]
+    target_params = []
     try:
-        target_params = parse_parm_file(args.file)
-        print(f'Loaded {len(target_params)} parameters from {COLOR_CYAN}{args.file}{COLOR_RESET}')
+        for fpath in file_list:
+            params = parse_parm_file(fpath)
+            print(f'Loaded {len(params)} parameters from {COLOR_CYAN}{fpath}{COLOR_RESET}')
+            target_params.extend(params)
     except Exception as e:
         print(f'{COLOR_RED}Error loading parameter file: {e}{COLOR_RESET}', file=sys.stderr)
         sys.exit(1)

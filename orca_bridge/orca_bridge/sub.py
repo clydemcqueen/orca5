@@ -31,7 +31,8 @@ class Sub:
         self.ekf_status_time: float | None = None
         self.t_map_base_ned = geometry.Pose()
         self.sonar_rf_distance: float | None = None
-        self.button1 = False
+        self.button2 = False
+        self.button3 = False
 
     def ekf_const_pos(self):
         return self.ekf_status_report.flags & apm.EKF_CONST_POS_MODE == apm.EKF_CONST_POS_MODE
@@ -78,8 +79,10 @@ class Sub:
             elif msg_type == 'LOCAL_POSITION_NED':
                 self.t_map_base_ned.set_position(msg.x, msg.y, msg.z)
             elif msg_type == 'STATUSTEXT':
-                if msg.text == 'script button 1':
-                    self.button1 = True
+                if msg.text == 'script button 2':
+                    self.button2 = True
+                elif msg.text == 'script button 3':
+                    self.button3 = True
             elif msg_type == 'SYSTEM_TIME':
                 self.system_time = msg
 

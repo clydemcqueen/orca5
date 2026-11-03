@@ -19,6 +19,7 @@ def generate_launch_description():
     orca_gz_dir = get_package_share_directory('orca_gz')
     default_world = os.path.join(orca_gz_dir, 'worlds', 'pnw.world')
     default_sub_parm = os.path.join(orca_gz_dir, 'config', 'sim.parm')
+    default_btn_parm = os.path.join(orca_gz_dir, 'config', 'btn.parm')
 
     nodes = [
         DeclareLaunchArgument(
@@ -45,6 +46,11 @@ def generate_launch_description():
             'sub_parm_file',
             default_value=default_sub_parm,
             description='ArduSub default parameter file path',
+        ),
+        DeclareLaunchArgument(
+            'btn_parm_file',
+            default_value=default_btn_parm,
+            description='ArduSub button parameter file path',
         ),
         # Launch Gazebo (headless)
         ExecuteProcess(
@@ -74,6 +80,7 @@ def generate_launch_description():
             arguments=[
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
                 '/model/orca5/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+                '/ocean_current@geometry_msgs/msg/Vector3]gz.msgs.Vector3d',
             ],
         ),
         # Publish a camera info message, required for rviz (not used by orb_slam3_ros)
@@ -132,7 +139,11 @@ def generate_launch_description():
                 '--home',
                 '47.6302,-122.3982391,-0.1,0',
                 '--defaults',
-                LaunchConfiguration('sub_parm_file'),
+                [
+                    LaunchConfiguration('sub_parm_file'),
+                    ',',
+                    LaunchConfiguration('btn_parm_file'),
+                ],
                 '--serial1',
                 'udpclient:127.0.0.1:14551',
                 '--speedup',

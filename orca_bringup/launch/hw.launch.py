@@ -28,10 +28,10 @@ def launch_setup(context, *args, **kwargs):
     camera_info_url = 'file://' + config_file_path
 
     # Modify this for your ROV
-    mav_device = 'udpin:0.0.0.0:14550'
+    # Note: in orca5_1, BlueOS is configured to send 10 fps
+    mav_device = 'udpin:0.0.0.0:14551'
     camera_name = 'dwe_camera'
-    gscam_config = 'udpsrc port=5600 ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264 ! rtpjitterbuffer ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
-    skip = 2  # Reduce 30 fps to 10 fps
+    gscam_config = 'udpsrc port=5601 ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264 ! rtpjitterbuffer ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
 
     urdf_file_path = os.path.join(orca_bringup_dir, 'urdf', 'orca5_1.urdf')
     with open(urdf_file_path, 'r') as infp:
@@ -59,7 +59,6 @@ def launch_setup(context, *args, **kwargs):
                     'camera_info_url': camera_info_url,
                     'frame_id': 'camera_sensor',
                     'gscam_config': gscam_config,
-                    'skip': skip,
                     'use_sim_time': False,
                 }
             ],
@@ -136,6 +135,7 @@ def launch_setup(context, *args, **kwargs):
                 'use_sim_time': 'False',
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
+                'enable_slam': LaunchConfiguration('enable_slam'),
                 'mav_device': mav_device,
                 'settings_file': param_file_path,
             }.items(),
@@ -165,6 +165,11 @@ def generate_launch_description():
                 'orb',
                 default_value='True',
                 description='Launch ORB_SLAM3?',
+            ),
+            DeclareLaunchArgument(
+                'enable_slam',
+                default_value='False',
+                description='Enable SLAM processing?',
             ),
             DeclareLaunchArgument(
                 'rviz',

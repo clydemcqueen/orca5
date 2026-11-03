@@ -7,9 +7,9 @@ find_package(ament_cmake_python REQUIRED)
 # Install Python modules
 ament_python_install_package(${PROJECT_NAME})
 
-# Install mission files
+# Install mission and Lua script files
 install(
-  DIRECTORY missions
+  DIRECTORY missions ../lua_scripts
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -20,6 +20,18 @@ if(BUILD_TESTING)
     test/test_dive_and_hold.py
     TARGET test_dive_and_hold
     TIMEOUT 180
+  )
+
+  add_launch_test(
+    test/test_vpe_hold.py
+    TARGET test_vpe_hold
+    TIMEOUT 300
+  )
+
+  add_launch_test(
+    test/test_guided_out_and_back.py
+    TARGET test_guided_out_and_back
+    TIMEOUT 240
   )
 endif()
 

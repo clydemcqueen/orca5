@@ -43,12 +43,15 @@ class OrcaSimHarness:
 
         self.mav_endpoint = mav_endpoint
         self.mav: Optional[mavutil.mavlink_connection] = None
+        self._last_gcs_heartbeat: float = 0.0
 
         # State tracking
         self.latest_slam_status: Optional[orb_slam3_msgs.msg.SlamStatus] = None
         self.latest_ekf_status: Optional[orca_msgs.msg.EkfStatusReport] = None
         self.latest_odometry: Optional[nav_msgs.msg.Odometry] = None
         self.latest_bridge_status: Optional[orca_msgs.msg.BridgeStatus] = None
+        self.latest_heartbeat: Optional[orca_msgs.msg.Heartbeat] = None
+        self.statustext_messages: List[str] = []
 
         # Odometry history
         self.odometry_samples: List[Tuple[float, float, float]] = []
@@ -79,6 +82,15 @@ class OrcaSimHarness:
             self._bridge_callback,
             10,
         )
+        self.heartbeat_sub = self.node.create_subscription(
+            orca_msgs.msg.Heartbeat,
+            'heartbeat',
+            self._heartbeat_callback,
+            10,
+        )
+
+    def _heartbeat_callback(self, msg: orca_msgs.msg.Heartbeat):
+        self.latest_heartbeat = msg
 
     def _slam_callback(self, msg: orb_slam3_msgs.msg.SlamStatus):
         self.latest_slam_status = msg
@@ -98,6 +110,9 @@ class OrcaSimHarness:
     def spin_once(self, timeout_sec: float = 0.05):
         """Spin ROS 2 node once."""
         rclpy.spin_once(self.node, timeout_sec=timeout_sec)
+        if self.mav is not None and time.time() - self._last_gcs_heartbeat >= 1.0:
+            self.mav.mav.heartbeat_send(apm.MAV_TYPE_GCS, apm.MAV_AUTOPILOT_INVALID, 0, 0, 0)
+            self._last_gcs_heartbeat = time.time()
 
     def connect_mavlink(self, timeout_s: float = 30.0) -> bool:
         """Connect to ArduSub SITL via MAVLink and wait for heartbeat."""
@@ -133,6 +148,7 @@ class OrcaSimHarness:
 
         while time.time() - start_time < timeout_s:
             self.spin_once(0.05)
+            self._drain_mavlink()
             if self.latest_slam_status is not None:
                 state = self.latest_slam_status.tracking_state
                 if state in (
@@ -152,6 +168,7 @@ class OrcaSimHarness:
 
         while time.time() - start_time < timeout_s:
             self.spin_once(0.05)
+            self._drain_mavlink()
             if self.latest_ekf_status is not None:
                 if self.latest_ekf_status.flags & orca_msgs.msg.EkfStatusReport.EKF_POS_HORIZ_REL:
                     self.node.get_logger().info('EKF relative position aiding confirmed')
@@ -159,6 +176,19 @@ class OrcaSimHarness:
 
         flags = self.latest_ekf_status.flags if self.latest_ekf_status else 'None'
         raise TimeoutError(f'EKF relative position aiding not active within {timeout_s}s (last flags: {flags})')
+
+    def _drain_mavlink(self):
+        """Drain pending MAVLink messages while recording STATUSTEXT messages."""
+        if self.mav is None:
+            return
+        while True:
+            msg = self.mav.recv_match(blocking=False)
+            if msg is not None:
+                if msg.get_type() == 'STATUSTEXT':
+                    self.statustext_messages.append(msg.text)
+                    self.node.get_logger().info(f'STATUSTEXT: {msg.text}')
+            elif not self.mav.select(0.0):
+                break
 
     def load_mission(self, filepath: str, timeout_s: float = 20.0) -> int:
         """Upload a waypoint mission from file to ArduSub using MAVLink protocol."""
@@ -175,6 +205,7 @@ class OrcaSimHarness:
             raise ValueError(f'No waypoints found in {filepath}')
 
         self.node.get_logger().info(f'Uploading {count} waypoints from {filepath}...')
+        self._drain_mavlink()
 
         # Clear existing waypoints
         self.mav.waypoint_clear_all_send()
@@ -182,6 +213,7 @@ class OrcaSimHarness:
 
         # Announce count
         self.mav.waypoint_count_send(count)
+        last_seq_sent = -1
 
         start_time = time.time()
         while time.time() - start_time < timeout_s:
@@ -197,6 +229,7 @@ class OrcaSimHarness:
             if msg.get_type() == 'MISSION_REQUEST':
                 wp = wploader.wp(msg.seq)
                 self.mav.mav.send(wp)
+                last_seq_sent = max(last_seq_sent, msg.seq)
             elif msg.get_type() == 'MISSION_REQUEST_INT':
                 wp = wploader.wp(msg.seq)
                 wp_int = apm.MAVLink_mission_item_int_message(
@@ -217,7 +250,10 @@ class OrcaSimHarness:
                     apm.MAV_MISSION_TYPE_MISSION,
                 )
                 self.mav.mav.send(wp_int)
+                last_seq_sent = max(last_seq_sent, msg.seq)
             elif msg.get_type() == 'MISSION_ACK':
+                if last_seq_sent < count - 1:
+                    continue
                 if msg.type == apm.MAV_MISSION_ACCEPTED:
                     self.node.get_logger().info(f'Mission upload accepted ({count} waypoints)')
                     return count
@@ -229,6 +265,7 @@ class OrcaSimHarness:
     def arm_throttle(self, timeout_s: float = 15.0) -> bool:
         """Arm vehicle throttle."""
         self.node.get_logger().info('Arming throttle...')
+        self._drain_mavlink()
         start_time = time.time()
 
         while time.time() - start_time < timeout_s:
@@ -270,14 +307,21 @@ class OrcaSimHarness:
 
         mode_id = inv_map[mode_name.upper()]
         self.node.get_logger().info(f'Setting vehicle mode to {mode_name} (id={mode_id})...')
+        self._drain_mavlink()
 
         start_time = time.time()
+        last_send_time = 0.0
         while time.time() - start_time < timeout_s:
             self.spin_once(0.05)
-            self.mav.set_mode(mode_id)
-            msg = self.mav.recv_match(type=['HEARTBEAT', 'COMMAND_ACK'], blocking=True, timeout=1.0)
+            if time.time() - last_send_time >= 1.0:
+                self.mav.set_mode(mode_id)
+                last_send_time = time.time()
+            msg = self.mav.recv_match(type=['HEARTBEAT', 'COMMAND_ACK', 'STATUSTEXT'], blocking=True, timeout=0.2)
             if msg:
-                if msg.get_type() == 'HEARTBEAT':
+                if msg.get_type() == 'STATUSTEXT':
+                    self.statustext_messages.append(msg.text)
+                    self.node.get_logger().info(f'STATUSTEXT: {msg.text}')
+                elif msg.get_type() == 'HEARTBEAT':
                     if msg.custom_mode == mode_id:
                         self.node.get_logger().info(f'Vehicle mode {mode_name} confirmed')
                         return True
@@ -291,6 +335,74 @@ class OrcaSimHarness:
         self.arm_throttle()
         self.set_mode('AUTO')
         return True
+
+    def send_rc_override(
+        self,
+        pitch: int = 1500,
+        roll: int = 1500,
+        throttle: int = 1500,
+        yaw: int = 1500,
+        forward: int = 1500,
+        lateral: int = 1500,
+    ):
+        """Send RC_CHANNELS_OVERRIDE to ArduSub."""
+        self.mav.mav.rc_channels_override_send(
+            self.mav.target_system,
+            self.mav.target_component,
+            pitch,
+            roll,
+            throttle,
+            yaw,
+            forward,
+            lateral,
+            65535,
+            65535,
+        )
+
+    def dive_to_depth(
+        self,
+        target_depth_m: float,
+        throttle_pwm: int = 1350,
+        timeout_s: float = 60.0,
+    ) -> float:
+        """Wait for EKF attitude, arm in MANUAL mode, descend using RC throttle until target_depth_m, and enter ALT_HOLD."""
+        start_time = time.time()
+        self.node.get_logger().info('Waiting for EKF attitude initialization before diving...')
+        while time.time() - start_time < timeout_s:
+            self.spin_once(0.05)
+            self._drain_mavlink()
+            if self.latest_ekf_status is not None and (
+                self.latest_ekf_status.flags & orca_msgs.msg.EkfStatusReport.EKF_ATTITUDE
+            ):
+                break
+
+        self.set_mode('MANUAL')
+        self.arm_throttle(timeout_s=30.0)
+        self.node.get_logger().info(f'Diving to {target_depth_m:.2f} m (throttle={throttle_pwm})...')
+
+        last_rc_time = 0.0
+        while time.time() - start_time < timeout_s:
+            self.spin_once(0.05)
+            self._drain_mavlink()
+            if time.time() - last_rc_time >= 0.2:
+                self.send_rc_override(throttle=throttle_pwm)
+                last_rc_time = time.time()
+
+            if self.latest_odometry is not None:
+                current_depth = -self.latest_odometry.pose.pose.position.z
+                if current_depth >= target_depth_m - 0.15:
+                    self.send_rc_override(throttle=1500)
+                    self.set_mode('ALT_HOLD')
+                    self.node.get_logger().info(
+                        f'Reached {current_depth:.2f} m, neutral throttle and switched to ALT_HOLD'
+                    )
+                    return current_depth
+
+        self.send_rc_override(throttle=1500)
+        current_depth = -self.latest_odometry.pose.pose.position.z if self.latest_odometry else 'None'
+        raise TimeoutError(
+            f'Vehicle did not reach depth {target_depth_m} m within {timeout_s}s (last depth: {current_depth})'
+        )
 
     def wait_for_depth(
         self,
@@ -308,6 +420,7 @@ class OrcaSimHarness:
 
         while time.time() - start_time < timeout_s:
             self.spin_once(0.05)
+            self._drain_mavlink()
             if self.latest_odometry is not None:
                 # In Gazebo ENU world, z is negative underwater
                 current_depth = -self.latest_odometry.pose.pose.position.z
@@ -342,6 +455,107 @@ class OrcaSimHarness:
         self.node.get_logger().info(f'Recorded {len(self.odometry_samples)} odometry samples')
         return list(self.odometry_samples)
 
+    def set_node_parameters(
+        self,
+        node_name: str,
+        parameters: List[rclpy.parameter.Parameter],
+        timeout_s: float = 10.0,
+    ) -> bool:
+        """Set parameters on a remote ROS 2 node."""
+        import rcl_interfaces.srv
+
+        clean_name = node_name.strip('/')
+        service_name = f'/{clean_name}/set_parameters'
+        client = self.node.create_client(rcl_interfaces.srv.SetParameters, service_name)
+
+        self.node.get_logger().info(f'Waiting for service {service_name}...')
+        start_time = time.time()
+        while not client.service_is_ready():
+            self.spin_once(0.05)
+            if time.time() - start_time > timeout_s:
+                raise TimeoutError(f'Service {service_name} not available within {timeout_s}s')
+
+        req = rcl_interfaces.srv.SetParameters.Request()
+        req.parameters = [p.to_parameter_msg() for p in parameters]
+
+        future = client.call_async(req)
+        while time.time() - start_time < timeout_s:
+            self.spin_once(0.05)
+            if future.done():
+                result = future.result()
+                if result is not None and all(r.successful for r in result.results):
+                    self.node.get_logger().info(f'Successfully set {len(parameters)} parameters on {clean_name}')
+                    return True
+                else:
+                    failures = [r.reason for r in result.results if not r.successful] if result else 'None'
+                    raise RuntimeError(f'Failed to set parameters on {clean_name}: {failures}')
+
+        raise TimeoutError(f'Timed out waiting for {service_name} response within {timeout_s}s')
+
+    def set_slam_enabled(self, enabled: bool, timeout_s: float = 10.0) -> bool:
+        """Enable or disable SLAM processing on orb_slam3_mono_node."""
+        return self.set_node_parameters(
+            'orb_slam3_mono_node',
+            [
+                rclpy.parameter.Parameter(
+                    'enable_slam',
+                    rclpy.parameter.Parameter.Type.BOOL,
+                    enabled,
+                )
+            ],
+            timeout_s=timeout_s,
+        )
+
+    def get_position_deviations(
+        self,
+        samples: Optional[List[Tuple[float, float, float]]] = None,
+    ) -> dict:
+        """Compute deviations from mean and peak-to-peak for a list of (x, y, z) odometry samples."""
+        if samples is None:
+            samples = self.odometry_samples
+
+        if len(samples) < 5:
+            raise AssertionError(f'Insufficient odometry samples collected ({len(samples)})')
+
+        mean_x = sum(p[0] for p in samples) / len(samples)
+        mean_y = sum(p[1] for p in samples) / len(samples)
+        mean_z = sum(p[2] for p in samples) / len(samples)
+
+        z_values = [p[2] for p in samples]
+        z_min = min(z_values)
+        z_max = max(z_values)
+        z_p2p = z_max - z_min
+        z_max_dev = max(abs(z - mean_z) for z in z_values)
+
+        xy_dists = [math.hypot(p[0] - mean_x, p[1] - mean_y) for p in samples]
+        xy_max_dev = max(xy_dists)
+        x_values = [p[0] for p in samples]
+        y_values = [p[1] for p in samples]
+        x_p2p = max(x_values) - min(x_values)
+        y_p2p = max(y_values) - min(y_values)
+        xy_p2p = math.hypot(x_p2p, y_p2p)
+
+        total_dists = [math.sqrt((p[0] - mean_x) ** 2 + (p[1] - mean_y) ** 2 + (p[2] - mean_z) ** 2) for p in samples]
+        total_max_dev = max(total_dists)
+
+        return {
+            'mean': (mean_x, mean_y, mean_z),
+            'z_max_dev': z_max_dev,
+            'z_p2p': z_p2p,
+            'xy_max_dev': xy_max_dev,
+            'xy_p2p': xy_p2p,
+            'total_max_dev': total_max_dev,
+        }
+
+    def print_position_deviations(self, label: str, dev: dict):
+        mean_x, mean_y, mean_z = dev['mean']
+        print(f'\n==================== {label} ====================')
+        print(f'  Centroid: x={mean_x:.4f} m, y={mean_y:.4f} m, z={mean_z:.4f} m')
+        print(f'  Z Dev from Mean (max): {dev["z_max_dev"]:.4f} m | Z Peak-to-Peak: {dev["z_p2p"]:.4f} m')
+        print(f'  Horizontal Dev from Mean (max): {dev["xy_max_dev"]:.4f} m | XY P2P: {dev["xy_p2p"]:.4f} m')
+        print(f'  3D Total Max Dev: {dev["total_max_dev"]:.4f} m')
+        print('==================================================\n', flush=True)
+
     def assert_position_held(
         self,
         samples: Optional[List[Tuple[float, float, float]]] = None,
@@ -374,6 +588,23 @@ class OrcaSimHarness:
             )
 
         return max_dist
+
+    def wait_for_statustext(self, substring: str, timeout_s: float = 90.0) -> str:
+        """Wait for a MAVLink STATUSTEXT message containing substring."""
+        self.node.get_logger().info(f'Waiting for STATUSTEXT containing "{substring}"...')
+        start_time = time.time()
+
+        while time.time() - start_time < timeout_s:
+            self._drain_mavlink()
+            for idx, text in enumerate(self.statustext_messages):
+                if substring in text:
+                    del self.statustext_messages[: idx + 1]
+                    self.node.get_logger().info(f'Matched STATUSTEXT: "{text}"')
+                    return text
+
+            self.spin_once(0.05)
+
+        raise TimeoutError(f'Timed out waiting for STATUSTEXT containing "{substring}" within {timeout_s}s')
 
     def close(self):
         """Clean up MAVLink and ROS node resources."""

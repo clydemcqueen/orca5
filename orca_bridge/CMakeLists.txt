@@ -24,6 +24,11 @@ if(BUILD_TESTING)
     test/test_pose.py
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
+  ament_add_pytest_test(
+    test_scale_and_map
+    test/test_scale_and_map.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
 endif()
 
 ament_package()

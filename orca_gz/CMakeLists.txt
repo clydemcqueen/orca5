@@ -36,6 +36,13 @@ foreach(MODEL_NAME ${MODEL_NAMES})
   )
 endforeach()
 
+# Install Python nodes
+install(
+  PROGRAMS
+  scripts/ocean_current_generator.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 # Install other directories
 install(
   DIRECTORY

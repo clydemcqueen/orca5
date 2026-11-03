@@ -139,11 +139,11 @@ RUN wget https://raw.githubusercontent.com/osrf/osrf-rosdep/master/gz/00-gazebo.
 # Switch back to new user
 USER $USERNAME
 
-# Clone ArduSub code
+# Clone ArduSub code. Live hw should use ArduPilot-4.7; the simulation needs a patch that hasn't been backported yet.
 WORKDIR /home/$USERNAME
-RUN git clone https://github.com/ArduPilot/ardupilot.git \
+RUN git clone https://github.com/clydemcqueen/ardupilot.git \
   && cd ardupilot \
-  && git checkout e5e97094 \
+  && git checkout ap_4_7_fix_json_rng \
   && git submodule update --init --recursive
 
 # Install ArduSub prereqs (this also appends to .bashrc)
