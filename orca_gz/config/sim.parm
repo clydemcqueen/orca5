@@ -181,3 +181,7 @@ PSC_D_ACC_FF  0.0
 ATC_RAT_RLL_D 0
 ATC_RAT_RLL_P 0
 ATC_RAT_RLL_I 0
+
+# Default to disabling DDS subsystem in SITL unless enable_dds:=True
+# TODO this isn't working, DDS is starting enabled
+DDS_ENABLE 0

@@ -9,10 +9,12 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import LaunchConfiguration
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
@@ -26,6 +28,11 @@ def generate_launch_description():
             'ardusub',
             default_value='True',
             description='Launch ardusub?',
+        ),
+        DeclareLaunchArgument(
+            'enable_dds',
+            default_value='False',
+            description='Enable ArduPilot DDS (launch micro_ros_agent)?',
         ),
         DeclareLaunchArgument(
             'gz_gui',
@@ -125,6 +132,19 @@ def generate_launch_description():
                 'camera_link',
             ],
         ),
+        # Launch micro_ros_agent if DDS is enabled
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                PathJoinSubstitution(
+                    [
+                        FindPackageShare('ardupilot_sitl'),
+                        'launch',
+                        'micro_ros_agent.launch.py',
+                    ]
+                )
+            ),
+            condition=IfCondition(LaunchConfiguration('enable_dds')),
+        ),
         # Launch ArduSub w/ SIM_JSON. Make sure ardusub is on the $PATH. To use the heavy (6dof) model: specify
         # vectored_6dof as the model, AND the default params must set magic ArduSub parameter FRAME_CONFIG to 2.0.
         # Yaw is provided by Gazebo, so the start yaw value is ignored.
@@ -150,7 +170,61 @@ def generate_launch_description():
                 LaunchConfiguration('speedup'),
             ],
             output='screen',
-            condition=IfCondition(LaunchConfiguration('ardusub')),
+            condition=IfCondition(
+                PythonExpression(
+                    [
+                        "'",
+                        LaunchConfiguration('ardusub'),
+                        "' == 'True' and '",
+                        LaunchConfiguration('enable_dds'),
+                        "' != 'True'",
+                    ]
+                )
+            ),
+        ),
+        # Launch ArduSub w/ SIM_JSON and DDS defaults enabled.
+        ExecuteProcess(
+            cmd=[
+                'ardusub',
+                '-S',
+                '--wipe',
+                '-M',
+                'JSON',
+                '-I0',
+                '--home',
+                '47.6302,-122.3982391,-0.1,0',
+                '--defaults',
+                [
+                    LaunchConfiguration('sub_parm_file'),
+                    ',',
+                    LaunchConfiguration('btn_parm_file'),
+                    ',',
+                    PathJoinSubstitution(
+                        [
+                            FindPackageShare('ardupilot_sitl'),
+                            'config',
+                            'default_params',
+                            'dds_udp.parm',
+                        ]
+                    ),
+                ],
+                '--serial1',
+                'udpclient:127.0.0.1:14551',
+                '--speedup',
+                LaunchConfiguration('speedup'),
+            ],
+            output='screen',
+            condition=IfCondition(
+                PythonExpression(
+                    [
+                        "'",
+                        LaunchConfiguration('ardusub'),
+                        "' == 'True' and '",
+                        LaunchConfiguration('enable_dds'),
+                        "' == 'True'",
+                    ]
+                )
+            ),
         ),
     ]
 
