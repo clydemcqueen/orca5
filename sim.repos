@@ -1,7 +1,17 @@
 # Repositories required by the sim target
 repositories:
 
+  ardupilot:
+    type: git
+    url: https://github.com/clydemcqueen/ardupilot.git
+    version: ap_4_7_fix_json_rng
+
   ardupilot_gazebo:
     type: git
     url: https://github.com/ArduPilot/ardupilot_gazebo.git
     version: cc0290d
+
+  micro_ros_agent:
+    type: git
+    url: https://github.com/micro-ROS/micro-ROS-Agent.git
+    version: jazzy

@@ -5,13 +5,17 @@
 FROM osrf/ros:jazzy-desktop AS base
 
 ARG USERNAME=orca5
-ARG USER_UID=1001
+ARG USER_UID=1000
 ARG USER_GID=$USER_UID
+ARG RENDER_GID=992
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get upgrade -y
+# Use bash as the default shell
+SHELL ["/bin/bash", "-c"]
+ENTRYPOINT ["/bin/bash"]
 
 RUN apt-get update \
+  && apt-get upgrade -y \
   && apt-get -y --quiet --no-install-recommends install \
     bash-completion \
     build-essential \
@@ -32,72 +36,60 @@ RUN apt-get update \
     vim \
   && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user
-# Required for ardupilot install, but generally a good idea
-# Also ensure GID 110 (render) exists to avoid 'groups: cannot find name for group ID 110'
-RUN (groupmod -g 110 render 2>/dev/null || groupadd -f -g 110 render) \
+# Create a non-root user (remove default 'ubuntu' user at UID 1000 first)
+# Also ensure render GID exists to avoid 'groups: cannot find name for group ID ...'
+RUN (userdel -r ubuntu 2>/dev/null || true) \
+  && (groupmod -g $RENDER_GID render 2>/dev/null || groupadd -f -g $RENDER_GID render) \
   && groupadd --gid $USER_GID $USERNAME \
   && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
   && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
   && chmod 0440 /etc/sudoers.d/$USERNAME \
-  && echo "\n# Added by orca5 Dockerfile:" >> /home/$USERNAME/.bashrc \
+  && echo -e "\n# Added by orca5 Dockerfile:" >> /home/$USERNAME/.bashrc \
   && echo "source /usr/share/bash-completion/completions/git" >> /home/$USERNAME/.bashrc
 
 # Switch to our new user
 USER $USERNAME
-
-# install-prereqs-ubuntu.sh looks at $USER
 ENV USER=$USERNAME
 
 # Create colcon workspace and the mount point for orca5
-WORKDIR /home/$USERNAME
-RUN mkdir -p colcon_ws/src/orca5
-
-# Get common repos
 WORKDIR /home/$USERNAME/colcon_ws/src
-COPY --chown=$USER_UID:$USER_GID common.repos orca5
-RUN vcs import --recursive < orca5/common.repos
+RUN mkdir -p orca5
 
-# Copy orca5 package.xml files
-WORKDIR /home/$USERNAME/colcon_ws
-COPY --chown=$USER_UID:$USER_GID orca_bridge/package.xml src/orca5/orca_bridge/
-COPY --chown=$USER_UID:$USER_GID orca_bringup/package.xml src/orca5/orca_bringup/
-COPY --chown=$USER_UID:$USER_GID orca_msgs/package.xml src/orca5/orca_msgs/
+# Get common repos and copy orca5 package.xml files for rosdep
+COPY --chown=$USER_UID:$USER_GID common.repos /tmp/common.repos
+COPY --chown=$USER_UID:$USER_GID orca_bridge/package.xml orca5/orca_bridge/
+COPY --chown=$USER_UID:$USER_GID orca_bringup/package.xml orca5/orca_bringup/
+COPY --chown=$USER_UID:$USER_GID orca_msgs/package.xml orca5/orca_msgs/
+RUN vcs import --recursive < /tmp/common.repos \
+  && rm /tmp/common.repos
 
 # Run rosdep over all repos
 # Fun fact: rosdep will automatically elevate permissions, but apt-get will not, so it requires sudo
 WORKDIR /home/$USERNAME/colcon_ws
 RUN sudo apt-get update \
   && rosdep update \
-  && rosdep install -y --from-paths . --ignore-src
+  && rosdep install -y --from-paths . --ignore-src \
+  && sudo rm -rf /var/lib/apt/lists/*
 
-# Do not build orca5 yet
-WORKDIR /home/$USERNAME/colcon_ws
-RUN touch src/orca5/COLCON_IGNORE
-
-# Build everything so far
-WORKDIR /home/$USERNAME/colcon_ws
-RUN [ "/bin/bash" , "-c" , "\
-  source /opt/ros/jazzy/setup.bash \
-  && colcon build --event-handlers console_direct+" ]
-
-# Copy orca5 requirements.txt file
-WORKDIR /home/$USERNAME/colcon_ws
-COPY --chown=$USER_UID:$USER_GID requirements.txt src/orca5/
+# Build everything so far (ignore orca5 until mounted at runtime)
+RUN touch src/orca5/COLCON_IGNORE \
+  && source /opt/ros/jazzy/setup.bash \
+  && colcon build --event-handlers console_direct+
 
 # Set up the Python environment
-WORKDIR /home/$USERNAME/colcon_ws
+COPY --chown=$USER_UID:$USER_GID requirements.txt /tmp/requirements.txt
 RUN python3 -m venv venv --system-site-packages \
   && touch venv/COLCON_IGNORE \
-  && . venv/bin/activate \
-  && pip install -r src/orca5/requirements.txt
+  && source venv/bin/activate \
+  && pip install --no-cache-dir -r /tmp/requirements.txt \
+  && rm /tmp/requirements.txt
+
+ENV VIRTUAL_ENV="/home/$USERNAME/colcon_ws/venv"
+ENV PATH="$VIRTUAL_ENV/bin:${PATH}"
 
 # Configure the shell environment
 RUN echo "source /home/$USERNAME/colcon_ws/install/setup.bash" >> /home/$USERNAME/.bashrc \
   && echo "source /home/$USERNAME/colcon_ws/venv/bin/activate" >> /home/$USERNAME/.bashrc
-
-# Create a mount point for orca5 source, this will shadow the existing orca5 directory
-VOLUME /home/$USERNAME/colcon_ws/src/orca5
 
 ###############################
 # sim target
@@ -108,14 +100,19 @@ FROM base AS sim
 # Switch to root to install stuff
 USER root
 
-# Install Gazebo Harmonic for use with ROS2 Jazzy
-RUN apt-get update \
-  && apt-get -y --quiet --no-install-recommends install ros-jazzy-ros-gz \
-  && rm -rf /var/lib/apt/lists/*
+# Add packages.osrfoundation.org and OSRF's rosdep rules for Gazebo Harmonic
+# Ref https://github.com/ArduPilot/ardupilot_gazebo#Rosdep
+RUN wget -qO /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg https://packages.osrfoundation.org/gazebo.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null \
+  && wget -qO /etc/ros/rosdep/sources.list.d/00-gazebo.list https://raw.githubusercontent.com/osrf/osrf-rosdep/master/gz/00-gazebo.list
 
-# Install ardupilot and ardupilot_gazebo prereqs
+# Install Gazebo Harmonic, ardupilot_sitl, and ardupilot_gazebo prereqs
+# Micro-XRCE-DDS-Gen needs openjdk-17, but jazzy-desktop has openjdk-21
 RUN apt-get update \
   && apt-get -y --quiet --no-install-recommends install \
+    ros-jazzy-ros-gz \
+    openjdk-17-jdk \
+    python3-pexpect \
     python3-pip \
     python3-wxgtk4.0 \
     rapidjson-dev \
@@ -126,76 +123,51 @@ RUN apt-get update \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-libav \
     gstreamer1.0-gl \
+  && update-java-alternatives -s "java-1.17.0-openjdk-$(dpkg --print-architecture)" \
   && rm -rf /var/lib/apt/lists/*
 
-# Add packages.osrfoundation.org, required by ardupilot_gazebo
-RUN curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
-  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
-
-# Add OSRF's rosdep rules so that rosdep will find Gazebo Harmonic keys
-# Ref https://github.com/ArduPilot/ardupilot_gazebo#Rosdep
-RUN wget https://raw.githubusercontent.com/osrf/osrf-rosdep/master/gz/00-gazebo.list -O /etc/ros/rosdep/sources.list.d/00-gazebo.list
+# Install Micro-XRCE-DDS-Gen, required by ArduPilot AP_DDS
+RUN git clone --depth 1 --recurse-submodules --branch v4.7.0 https://github.com/ardupilot/Micro-XRCE-DDS-Gen.git /opt/Micro-XRCE-DDS-Gen \
+  && cd /opt/Micro-XRCE-DDS-Gen \
+  && ./gradlew assemble \
+  && chmod -R a+rX /opt/Micro-XRCE-DDS-Gen \
+  && ln -s /opt/Micro-XRCE-DDS-Gen/scripts/microxrceddsgen /usr/local/bin/microxrceddsgen \
+  && rm -rf ~/.gradle
+ENV PATH="/opt/Micro-XRCE-DDS-Gen/scripts:${PATH}"
 
 # Switch back to new user
 USER $USERNAME
 
-# Clone ArduSub code. Live hw should use ArduPilot-4.7; the simulation needs a patch that hasn't been backported yet.
-WORKDIR /home/$USERNAME
-RUN git clone https://github.com/clydemcqueen/ardupilot.git \
-  && cd ardupilot \
-  && git checkout ap_4_7_fix_json_rng \
-  && git submodule update --init --recursive
-
-# Install ArduSub prereqs (this also appends to .bashrc)
-WORKDIR /home/$USERNAME/ardupilot
-ENV SKIP_AP_EXT_ENV=1 SKIP_AP_GRAPHIC_ENV=1 SKIP_AP_COV_ENV=1 SKIP_AP_GIT_CHECK=1
-RUN Tools/environment_install/install-prereqs-ubuntu.sh -y
-
-# future is required by pymavlink but removed from Ubuntu 24.04 (Noble) apt repos
-RUN pip3 install --break-system-packages future
-
-# Build ArduSub
-# Note: waf will capture all of the environment variables in ardupilot/.lock-waf_linux_build.
-# Any change to enviroment variables will cause a re-build.
-# To avoid this call sim_vehicle.py with the "--no-rebuild" option.
-WORKDIR /home/$USERNAME/ardupilot
-RUN modules/waf/waf-light configure --board sitl \
-  && modules/waf/waf-light build --target bin/ardusub
-
 # Build for Gazebo Harmonic, define this before building ardupilot_gazebo
 ENV GZ_VERSION=harmonic
 
-# Get sim repos
+# Get sim repos and copy sim-only orca5 package.xml files for rosdep
 WORKDIR /home/$USERNAME/colcon_ws/src
-COPY --chown=$USER_UID:$USER_GID sim.repos orca5
-RUN vcs import --recursive < orca5/sim.repos
-
-# Copy sim-only orca5 package.xml files
-WORKDIR /home/$USERNAME/colcon_ws
-COPY --chown=$USER_UID:$USER_GID orca_gz/package.xml src/orca5/orca_gz/
-COPY --chown=$USER_UID:$USER_GID orca_test/package.xml src/orca5/orca_test/
+COPY --chown=$USER_UID:$USER_GID sim.repos /tmp/sim.repos
+COPY --chown=$USER_UID:$USER_GID orca_gz/package.xml orca5/orca_gz/
+COPY --chown=$USER_UID:$USER_GID orca_test/package.xml orca5/orca_test/
+RUN vcs import --recursive < /tmp/sim.repos \
+  && rm /tmp/sim.repos \
+  && cd ardupilot \
+  && git submodule update --init --recursive
 
 # Run rosdep over sim repos
 WORKDIR /home/$USERNAME/colcon_ws
 RUN rm -f src/orca5/COLCON_IGNORE \
   && sudo apt-get update \
   && rosdep update \
-  && rosdep install -y --from-paths . --ignore-src \
+  && rosdep install -y --from-paths . --ignore-src --skip-keys microxrcedds_agent \
+  && sudo rm -rf /var/lib/apt/lists/* \
   && touch src/orca5/COLCON_IGNORE
 
 # Build everything so far
-WORKDIR /home/$USERNAME/colcon_ws
-RUN [ "/bin/bash" , "-c" , "\
-  source /opt/ros/jazzy/setup.bash \
-  && colcon build --event-handlers console_direct+" ]
+# Subsequent ardupilot_sitl builds will re-link all binaries, touch COLCON_IGNORE to avoid this
+RUN source /opt/ros/jazzy/setup.bash \
+  && colcon build --event-handlers console_direct+ \
+  && touch src/ardupilot/COLCON_IGNORE
 
 # Configure the shell environment
-RUN echo "export PATH=\"/home/$USERNAME/ardupilot/build/sitl/bin:\$PATH\"" >> /home/$USERNAME/.bashrc
-ENV PATH="/home/$USERNAME/ardupilot/build/sitl/bin:${PATH}"
-
-# Use bash as the default shell
-SHELL ["/bin/bash", "-c"]
-ENTRYPOINT ["/bin/bash"]
+ENV PATH="/home/$USERNAME/colcon_ws/install/ardupilot_sitl/bin:${PATH}"
 
 ###############################
 # hw target (assumes CPU)
@@ -224,21 +196,16 @@ USER $USERNAME
 
 # Get hw repos
 WORKDIR /home/$USERNAME/colcon_ws/src
-COPY --chown=$USER_UID:$USER_GID hw.repos orca5
-RUN vcs import --recursive < orca5/hw.repos
+COPY --chown=$USER_UID:$USER_GID hw.repos /tmp/hw.repos
+RUN vcs import --recursive < /tmp/hw.repos \
+  && rm /tmp/hw.repos
 
 # Run rosdep over hw repos
 WORKDIR /home/$USERNAME/colcon_ws
 RUN sudo apt-get update \
-  && rosdep update \
-  && rosdep install -y --from-paths . --ignore-src
+  && rosdep install -y --from-paths . --ignore-src \
+  && sudo rm -rf /var/lib/apt/lists/*
 
 # Build everything so far
-WORKDIR /home/$USERNAME/colcon_ws
-RUN [ "/bin/bash" , "-c" , "\
-  source /opt/ros/jazzy/setup.bash \
-  && colcon build --event-handlers console_direct+" ]
-
-# Use bash as the default shell
-SHELL ["/bin/bash", "-c"]
-ENTRYPOINT ["/bin/bash"]
+RUN source /opt/ros/jazzy/setup.bash \
+  && colcon build --event-handlers console_direct+

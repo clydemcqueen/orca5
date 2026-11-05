@@ -56,6 +56,11 @@ def generate_launch_description():
             default_value='1',
             description='ArduSub simulation speedup factor',
         ),
+        DeclareLaunchArgument(
+            'enable_dds',
+            default_value='False',
+            description='Enable ArduPilot DDS (launch micro_ros_agent)?',
+        ),
         # Launch Gazebo simulation, ROS-Gazebo bridges, and ArduSub SITL
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(orca_gz_dir, 'launch', 'gz.launch.py')),
@@ -63,6 +68,7 @@ def generate_launch_description():
                 'ardusub': LaunchConfiguration('ardusub'),
                 'gz_gui': LaunchConfiguration('gz_gui'),
                 'speedup': LaunchConfiguration('speedup'),
+                'enable_dds': LaunchConfiguration('enable_dds'),
             }.items(),
         ),
         # Launch pose_to_path node for slam_path topic
