@@ -7,6 +7,9 @@ uint16 WAIT_EKF = 4                     # Set if we are waiting for the EKF to e
 uint16 WAIT_SLAM = 8                    # Set if we are waiting for ORB_SLAM3 to start tracking.
 # Problem encountered, but we still sent a VPD to ArduSub:
 uint16 OK_OUTLIER = 16                  # Set if we are sending an outlier to ArduSub.
+# Mono-IMU / map update flags (VPD not sent):
+uint16 WAIT_IMU = 32                    # Set if we are waiting for ORB_SLAM3 IMU initialization.
+uint16 SKIP_MAP_CHANGE = 64             # Set if we skipped sending VPD due to a map/BA jump.
 uint16 flags
 
 float64 sonar_rf                        # Input to scale filter is sonar_rf / slam_rf

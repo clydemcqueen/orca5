@@ -58,10 +58,11 @@ if [ -n "$DISPLAY" ]; then
         -v /tmp/.X11-unix:/tmp/.X11-unix"
 fi
 
-# Select target container naming and network options
+# Select target container naming
+# Add --net=host in the sim case to support a host-based GCS like QGC
 if [ "$TARGET" == "sim" ]; then
     echo "Configuring sim (simulation) container..."
-    DOCKER_FLAGS+=" --name orca5_sim"
+    DOCKER_FLAGS+=" --name orca5_sim --net=host"
 elif [ "$TARGET" == "hw" ]; then
     echo "Configuring hw (hardware) container..."
     DOCKER_FLAGS+=" --name orca5_hw --net=host"

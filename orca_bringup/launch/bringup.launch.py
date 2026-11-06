@@ -10,7 +10,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
@@ -37,6 +37,11 @@ def generate_launch_description():
             'enable_slam',
             default_value='True',
             description='Enable SLAM processing?',
+        ),
+        DeclareLaunchArgument(
+            'mono_imu',
+            default_value='False',
+            description='Use Monocular-Inertial SLAM?',
         ),
         DeclareLaunchArgument(
             'mav_device',
@@ -66,7 +71,45 @@ def generate_launch_description():
                     'enable_slam': LaunchConfiguration('enable_slam'),
                 }
             ],
-            condition=IfCondition(LaunchConfiguration('orb')),
+            condition=IfCondition(
+                PythonExpression(
+                    [
+                        "'",
+                        LaunchConfiguration('orb'),
+                        "'.lower() == 'true' and '",
+                        LaunchConfiguration('mono_imu'),
+                        "'.lower() != 'true'",
+                    ]
+                )
+            ),
+        ),
+        Node(
+            package='orb_slam3_ros',
+            executable='orb_slam3_ros_mono_imu',
+            output='screen',
+            remappings=[
+                ('imu', '/ap/imu/experimental/data'),
+            ],
+            parameters=[
+                {
+                    'use_sim_time': LaunchConfiguration('use_sim_time'),
+                    'voc_file': LaunchConfiguration('voc_file'),
+                    'settings_file': LaunchConfiguration('settings_file'),
+                    'world_frame_id': 'world',
+                    'enable_slam': LaunchConfiguration('enable_slam'),
+                }
+            ],
+            condition=IfCondition(
+                PythonExpression(
+                    [
+                        "'",
+                        LaunchConfiguration('orb'),
+                        "'.lower() == 'true' and '",
+                        LaunchConfiguration('mono_imu'),
+                        "'.lower() == 'true'",
+                    ]
+                )
+            ),
         ),
         Node(
             package='orca_bridge',
@@ -76,6 +119,7 @@ def generate_launch_description():
                 {
                     'use_sim_time': LaunchConfiguration('use_sim_time'),
                     'mav_device': LaunchConfiguration('mav_device'),
+                    'mono_imu': LaunchConfiguration('mono_imu'),
                 }
             ],
             condition=IfCondition(LaunchConfiguration('bridge')),

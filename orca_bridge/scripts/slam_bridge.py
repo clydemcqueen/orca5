@@ -62,15 +62,25 @@ class MonoSlamBridge(rclpy.node.Node):
         self.max_delta_pos = self.declare_parameter('max_delta_pos', 0.5).get_parameter_value().double_value
         self.max_delta_rot = self.declare_parameter('max_delta_rot', math.pi / 6).get_parameter_value().double_value
 
+        # Monocular-Inertial (mono_imu) mode parameters
+        self.mono_imu = self.declare_parameter('mono_imu', False).get_parameter_value().bool_value
+        self.mono_imu_max_delta_pos = (
+            self.declare_parameter('mono_imu_max_delta_pos', 0.20).get_parameter_value().double_value
+        )
+        self.viba_reanchor_duration = (
+            self.declare_parameter('viba_reanchor_duration', 50.0).get_parameter_value().double_value
+        )
+
         # Use VISION_POSITION_ESTIMATE (VPE) instead of VISION_POSITION_DELTA (VPD)
         self.use_vpe = self.declare_parameter('use_vpe', False).get_parameter_value().bool_value
         self.vpe_reset_counter: int = 0
         self.last_map_id: int | None = None
         self.add_on_set_parameters_callback(self.parameters_callback)
 
-        # Static transform slam -> world
+        # Static transform slam -> world (identity in mono_imu since ORB_SLAM3 world already has +Z up)
         self.t_slam_world = geometry.Pose()
-        self.t_slam_world.set_euler(math.pi, 0, 0)
+        if not self.mono_imu:
+            self.t_slam_world.set_euler(math.pi, 0, 0)
 
         # Static transform base_link (base) -> camera_link (link) should be available, listen for it
         self.tf_buffer = tf2_ros.Buffer()
@@ -112,8 +122,9 @@ class MonoSlamBridge(rclpy.node.Node):
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
         # Service clients
+        slam_node_name = 'orb_slam3_mono_imu_node' if self.mono_imu else 'orb_slam3_mono_node'
         self.mono_param_client = self.create_client(
-            rcl_interfaces.srv.SetParameters, '/orb_slam3_mono_node/set_parameters'
+            rcl_interfaces.srv.SetParameters, f'/{slam_node_name}/set_parameters'
         )
 
         # Manage state on a 10 Hz timer
@@ -206,6 +217,20 @@ class MonoSlamBridge(rclpy.node.Node):
 
         return False
 
+    def is_mono_imu_step(self, delta_p, delta_e) -> bool:
+        """Return true if a 1-frame step in mono_imu mode exceeds the inertial BA jump threshold."""
+        delta_pos = math.sqrt(delta_p[0] ** 2 + delta_p[1] ** 2 + delta_p[2] ** 2)
+        delta_roll = (delta_e[0] + math.pi) % (2 * math.pi) - math.pi
+        delta_pitch = (delta_e[1] + math.pi) % (2 * math.pi) - math.pi
+        delta_yaw = (delta_e[2] + math.pi) % (2 * math.pi) - math.pi
+
+        return (
+            delta_pos > self.mono_imu_max_delta_pos
+            or abs(delta_roll) > self.max_delta_rot
+            or abs(delta_pitch) > self.max_delta_rot
+            or abs(delta_yaw) > self.max_delta_rot
+        )
+
     def publish_bridge_status(self, stamp, flags):
         bridge_status_msg = orca_msgs.msg.BridgeStatus()
         bridge_status_msg.header.stamp = stamp
@@ -237,8 +262,8 @@ class MonoSlamBridge(rclpy.node.Node):
                 )
                 flags |= orca_msgs.msg.BridgeStatus.WAIT_TRANSFORMS
 
-        # Wait for sonar rangefinder readings
-        if self.sub.sonar_rf_distance is None:
+        # Wait for sonar rangefinder readings (only needed for scale in mono mode)
+        if not self.mono_imu and self.sub.sonar_rf_distance is None:
             self.get_logger().warn('Sonar rangefinder not available, dropping slam message', throttle_duration_sec=1.0)
             flags |= orca_msgs.msg.BridgeStatus.WAIT_SONAR_RF
 
@@ -251,8 +276,25 @@ class MonoSlamBridge(rclpy.node.Node):
         # Update SLAM state
         # ----------
 
-        # Wait for ORB_SLAM3 to create a map and start tracking
-        if msg.tracking_state != orb_slam3_msgs.msg.SlamStatus.TRACKING_OK:
+        # Clear cached maps if ORB_SLAM3 reset back to pre-map states (so map_id=0 can be cleanly recreated)
+        if msg.tracking_state in (
+            orb_slam3_msgs.msg.SlamStatus.TRACKING_NO_IMAGES_YET,
+            orb_slam3_msgs.msg.SlamStatus.TRACKING_NOT_INITIALIZED,
+        ):
+            if self.maps.current_map is not None:
+                self.maps.reset()
+                if self.last_map_id is not None:
+                    self.last_map_id = -1
+
+        # Wait for ORB_SLAM3 to create a map and start tracking (plus IMU init in mono_imu mode)
+        slam_tracking_ok = msg.tracking_state == orb_slam3_msgs.msg.SlamStatus.TRACKING_OK
+        if not slam_tracking_ok:
+            flags |= orca_msgs.msg.BridgeStatus.WAIT_SLAM
+        elif self.mono_imu and not msg.imu_initialized:
+            self.get_logger().info('Waiting for ORB_SLAM3 IMU initialization', throttle_duration_sec=1.0)
+            flags |= orca_msgs.msg.BridgeStatus.WAIT_IMU
+
+        if not slam_tracking_ok or (self.mono_imu and not msg.imu_initialized):
             if self.tracking:
                 self.tracking = False
                 self.get_logger().info('Tracking stopped')
@@ -261,7 +303,6 @@ class MonoSlamBridge(rclpy.node.Node):
                 # position, but after ~6s it will time out and switch to const_pos mode. It appears that we can speed
                 # this process up a bit by changing the EKF source set to remove the POSXY and VELXY inputs.
                 self.set_ekf_sources(slam_tracking=False)
-            flags |= orca_msgs.msg.BridgeStatus.WAIT_SLAM
 
         if flags:
             # Nothing to do
@@ -282,6 +323,7 @@ class MonoSlamBridge(rclpy.node.Node):
             self.t_slam_world,
             self.get_logger(),
             scale_freeze_duration=self.scale_freeze_duration,
+            mono_imu=self.mono_imu,
         )
 
         current_map = self.maps.current_map
@@ -298,7 +340,7 @@ class MonoSlamBridge(rclpy.node.Node):
         # This will give us 2 map -> base transforms: one from the EKF, one from the SLAM map
         # ----------
 
-        # We are given the pose of the camera sensor in the world frame (unscaled)
+        # We are given the pose of the camera sensor in the world frame (unscaled in mono, metric in mono_imu)
         t_world_camera = geometry.Pose.from_pose_msg(msg.pose)
 
         # Find the pose of the camera sensor in the SLAM map frame
@@ -307,14 +349,15 @@ class MonoSlamBridge(rclpy.node.Node):
         # Find the pose of camera_link (ENU) in the SLAM map frame
         t_slam_link = t_slam_camera.mult(geometry.Pose.T_OPENCV_FLU)
 
-        # Find the unscaled pose of the base link (the ROV) in the SLAM map frame
+        # Find the pose of the base link (the ROV) in the SLAM map frame
         t_slam_base = t_slam_link.mult(self.t_link_base)
 
         # Calculate the unscaled delta from the previous pose
-        if current_map.t_slam_base is None:
+        had_prev_pose = current_map.t_slam_base is not None
+        if not had_prev_pose:
             delta_unscaled = geometry.Pose()
         else:
-            delta_unscaled = geometry.Pose.delta_pose(current_map.t_slam_base, t_slam_base)
+            delta_unscaled = geometry.Pose.delta_pose(current_map.t_slam_base, t_slam_base)  # type: ignore
 
         # Scale deltas, not poses: scale translation by current_map.scale
         scale = current_map.scale
@@ -326,18 +369,36 @@ class MonoSlamBridge(rclpy.node.Node):
         delta_e = delta_unscaled.get_euler()
         delta = geometry.Pose(p=delta_p, q=delta_unscaled.q)
 
-        # Detect outliers, but allow them
-        if self.is_outlier(delta_p, delta_e):
+        t_slam_base_scaled = geometry.Pose(
+            p=(t_slam_base.p[0] * scale, t_slam_base.p[1] * scale, t_slam_base.p[2] * scale),
+            q=t_slam_base.q,
+        )
+
+        # Handle map changes (loop closure) and mono_imu inertial BA jumps
+        is_map_jump = had_prev_pose and (msg.map_changed or (self.mono_imu and self.is_mono_imu_step(delta_p, delta_e)))
+        if is_map_jump:
+            flags |= orca_msgs.msg.BridgeStatus.SKIP_MAP_CHANGE
+            delta = geometry.Pose()
+            elapsed_s = stamp_to_s(msg.header.stamp) - current_map.init_stamp_s
+            if self.mono_imu and not msg.map_changed and elapsed_s < self.viba_reanchor_duration:
+                t_map_base_ekf = self.sub.t_map_base_ned.ned_to_enu_standard()
+                current_map.reanchor_map_slam(t_map_base_ekf, t_slam_base_scaled)
+                self.get_logger().info(
+                    f'Map/VIBA step at +{elapsed_s:.1f}s: skipped VPD and re-anchored t_map_slam to EKF'
+                )
+            else:
+                self.vpe_reset_counter = (self.vpe_reset_counter + 1) % 256
+                self.get_logger().info(
+                    f'Map change at +{elapsed_s:.1f}s: skipped VPD, vpe_reset_counter={self.vpe_reset_counter}'
+                )
+        elif self.is_outlier(delta_p, delta_e):
+            # Detect outliers, but allow them
             flags |= orca_msgs.msg.BridgeStatus.OK_OUTLIER
 
         # Save the current unscaled slam->base transform
         current_map.update_pose(t_slam_base)
 
         # Find the pose of the base link (the ROV) in the map frame using scaled absolute pose
-        t_slam_base_scaled = geometry.Pose(
-            p=(t_slam_base.p[0] * scale, t_slam_base.p[1] * scale, t_slam_base.p[2] * scale),
-            q=t_slam_base.q,
-        )
         t_map_base = current_map.t_map_slam.mult(t_slam_base_scaled)
 
         # ----------
@@ -361,7 +422,7 @@ class MonoSlamBridge(rclpy.node.Node):
                 (0.0,) * 21,
                 self.vpe_reset_counter,
             )
-        else:
+        elif not is_map_jump:
             # Convert FLU (forward, left, up) to FRD (forward, right, down)
             delta_p_frd = (delta_p[0], -delta_p[1], -delta_p[2])
             delta_e_frd = (delta_e[0], -delta_e[1], -delta_e[2])

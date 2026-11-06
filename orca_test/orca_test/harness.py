@@ -29,7 +29,9 @@ class OrcaSimHarness:
         node_name: str = 'orca_sim_harness',
         mav_endpoint: str = 'tcp:127.0.0.1:5760',
         use_sim_time: bool = True,
+        mono_imu: bool = False,
     ):
+        self.mono_imu = mono_imu
         self.node = rclpy.create_node(
             node_name,
             parameter_overrides=[
@@ -142,8 +144,10 @@ class OrcaSimHarness:
         raise TimeoutError(f'Failed to connect to MAVLink endpoint {self.mav_endpoint} within {timeout_s}s')
 
     def wait_for_slam_lock(self, timeout_s: float = 60.0) -> bool:
-        """Wait for ORB_SLAM3 to report active tracking."""
-        self.node.get_logger().info('Waiting for SLAM lock (tracking_state == TRACKING_OK)...')
+        """Wait for ORB_SLAM3 to report active tracking (and IMU init when mono_imu=True)."""
+        self.node.get_logger().info(
+            f'Waiting for SLAM lock (tracking_state == TRACKING_OK, mono_imu={self.mono_imu})...'
+        )
         start_time = time.time()
 
         while time.time() - start_time < timeout_s:
@@ -155,11 +159,16 @@ class OrcaSimHarness:
                     orb_slam3_msgs.msg.SlamStatus.TRACKING_OK,
                     orb_slam3_msgs.msg.SlamStatus.TRACKING_OK_KLT,
                 ):
-                    self.node.get_logger().info(f'SLAM lock acquired (state={state})')
-                    return True
+                    imu_init = self.latest_slam_status.imu_initialized
+                    if not self.mono_imu or imu_init:
+                        self.node.get_logger().info(f'SLAM lock acquired (state={state}, imu_initialized={imu_init})')
+                        return True
 
         curr_state = self.latest_slam_status.tracking_state if self.latest_slam_status else 'None'
-        raise TimeoutError(f'SLAM lock not acquired within {timeout_s}s (last state: {curr_state})')
+        imu_init = self.latest_slam_status.imu_initialized if self.latest_slam_status else 'None'
+        raise TimeoutError(
+            f'SLAM lock not acquired within {timeout_s}s (last state: {curr_state}, imu_initialized: {imu_init})'
+        )
 
     def wait_for_ekf_aiding(self, timeout_s: float = 60.0) -> bool:
         """Wait for ArduSub EKF to report relative horizontal position aiding."""
@@ -404,6 +413,52 @@ class OrcaSimHarness:
             f'Vehicle did not reach depth {target_depth_m} m within {timeout_s}s (last depth: {current_depth})'
         )
 
+    def warmup_mono_imu(
+        self,
+        target_depth_m: float = 1.5,
+        enable_slam: bool = False,
+        leg_duration_s: float = 4.0,
+        timeout_s: float = 60.0,
+    ):
+        """Dive and perform a symmetric 3D excitation maneuver so ORB_SLAM3 completes IMU init and VIBA 1/2."""
+        start_time = time.time()
+        self.node.get_logger().info('Waiting for EKF attitude initialization before mono_imu warmup...')
+        while time.time() - start_time < timeout_s:
+            self.spin_once(0.05)
+            self._drain_mavlink()
+            if self.latest_ekf_status is not None and (
+                self.latest_ekf_status.flags & orca_msgs.msg.EkfStatusReport.EKF_ATTITUDE
+            ):
+                break
+
+        if enable_slam:
+            self.set_slam_enabled(True)
+
+        self.dive_to_depth(target_depth_m=target_depth_m, throttle_pwm=1380, timeout_s=timeout_s)
+
+        legs = [
+            ('forward', 1600, 1500),
+            ('backward', 1400, 1500),
+            ('right', 1500, 1600),
+            ('left', 1500, 1400),
+        ]
+        for label, fwd_pwm, lat_pwm in legs:
+            self.node.get_logger().info(f'mono_imu warmup leg: {label} ({leg_duration_s:.1f}s)')
+            leg_start = time.time()
+            last_rc_time = 0.0
+            while time.time() - leg_start < leg_duration_s:
+                self.spin_once(0.05)
+                self._drain_mavlink()
+                if time.time() - last_rc_time >= 0.2:
+                    self.send_rc_override(throttle=1500, forward=fwd_pwm, lateral=lat_pwm)
+                    last_rc_time = time.time()
+
+        self.send_rc_override(throttle=1500, forward=1500, lateral=1500)
+        settle_start = time.time()
+        while time.time() - settle_start < 2.0:
+            self.spin_once(0.05)
+            self._drain_mavlink()
+
     def wait_for_depth(
         self,
         target_depth_m: float,
@@ -493,9 +548,10 @@ class OrcaSimHarness:
         raise TimeoutError(f'Timed out waiting for {service_name} response within {timeout_s}s')
 
     def set_slam_enabled(self, enabled: bool, timeout_s: float = 10.0) -> bool:
-        """Enable or disable SLAM processing on orb_slam3_mono_node."""
+        """Enable or disable SLAM processing on the active ORB_SLAM3 node."""
+        node_name = 'orb_slam3_mono_imu_node' if self.mono_imu else 'orb_slam3_mono_node'
         return self.set_node_parameters(
-            'orb_slam3_mono_node',
+            node_name,
             [
                 rclpy.parameter.Parameter(
                     'enable_slam',

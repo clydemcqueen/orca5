@@ -36,6 +36,33 @@ Camera.fps: 10
 Camera.RGB: 1
 
 #--------------------------------------------------------------------------------------------
+# IMU Parameters (used in IMU_MONOCULAR mode; ignored in MONOCULAR mode)
+#--------------------------------------------------------------------------------------------
+
+# Transformation from camera optical frame (c1) to ArduPilot IMU body frame (b, FRD):
+#   x_b (forward) = -y_c1, y_b (right) = +x_c1, z_b (down) = +z_c1
+#   In Gazebo model.sdf: imu_sensor is at (0, 0, -0.1) in base_link,
+#   and sim_camera is at (-0.1, 0, 0) in base_link -> t_b_c1 = (-0.1, 0.0, -0.1) in FRD.
+IMU.T_b_c1: !!opencv-matrix
+  rows: 4
+  cols: 4
+  dt: f
+  data: [ 0.0, -1.0, 0.0, -0.1,
+          1.0,  0.0, 0.0,  0.0,
+          0.0,  0.0, 1.0, -0.1,
+          0.0,  0.0, 0.0,  1.0 ]
+
+# IMU noise parameters (continuous-time densities)
+IMU.NoiseGyro: 1.7e-4
+IMU.NoiseAcc: 2.0e-3
+IMU.GyroWalk: 2.0e-5
+IMU.AccWalk: 3.0e-4
+
+# IMU messages per second (/ap/imu/experimental/data rate in SITL)
+# Must be a real number
+IMU.Frequency: 153.0
+
+#--------------------------------------------------------------------------------------------
 # ORB Parameters
 #--------------------------------------------------------------------------------------------
 

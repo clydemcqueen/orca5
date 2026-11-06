@@ -96,6 +96,7 @@ def launch_setup(context, *args, **kwargs):
                 'record',
                 '--include-hidden-topics',
                 '/annotated_image',
+                '/ap/imu/experimental/data',
                 '/bridge_status',
                 '/camera_info',
                 '/camera_pose',
@@ -136,6 +137,7 @@ def launch_setup(context, *args, **kwargs):
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
                 'enable_slam': LaunchConfiguration('enable_slam'),
+                'mono_imu': LaunchConfiguration('mono_imu'),
                 'mav_device': mav_device,
                 'settings_file': param_file_path,
             }.items(),
@@ -170,6 +172,11 @@ def generate_launch_description():
                 'enable_slam',
                 default_value='False',
                 description='Enable SLAM processing?',
+            ),
+            DeclareLaunchArgument(
+                'mono_imu',
+                default_value='False',
+                description='Use Monocular-Inertial SLAM?',
             ),
             DeclareLaunchArgument(
                 'rviz',

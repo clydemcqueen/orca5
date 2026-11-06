@@ -23,14 +23,32 @@ if(BUILD_TESTING)
   )
 
   add_launch_test(
+    test/test_dive_and_hold_mono_imu.py
+    TARGET test_dive_and_hold_mono_imu
+    TIMEOUT 180
+  )
+
+  add_launch_test(
     test/test_vpe_hold.py
     TARGET test_vpe_hold
     TIMEOUT 300
   )
 
   add_launch_test(
+    test/test_vpe_hold_mono_imu.py
+    TARGET test_vpe_hold_mono_imu
+    TIMEOUT 300
+  )
+
+  add_launch_test(
     test/test_guided_out_and_back.py
     TARGET test_guided_out_and_back
+    TIMEOUT 240
+  )
+
+  add_launch_test(
+    test/test_guided_out_and_back_mono_imu.py
+    TARGET test_guided_out_and_back_mono_imu
     TIMEOUT 240
   )
 endif()

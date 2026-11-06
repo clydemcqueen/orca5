@@ -112,22 +112,29 @@ class SlamMap:
         pitch: float,
         logger,
         scale_freeze_duration: float = 5.0,
+        mono_imu: bool = False,
     ):
         # The map id from ORB_SLAM3
         self.map_id = map_id
+        self.mono_imu = mono_imu
+        self.init_stamp_s = stamp_s
 
         # Rangefinder readings for logging
         self.sonar_rf = sonar_rf
         self.slam_rf = slam_rf
 
-        # Scale factor for this map. Default to 1.0 until we get a good reading, then use a low pass filter
+        # Scale factor for this map. In mono_imu mode scale is metric (1.0); otherwise use sonar LPF
         self.scale = 1.0
         self.scale_filter = LowPassFilter(0.1)
         self.scale_freeze_duration = scale_freeze_duration
         self.first_scale_time: float | None = None
         self.scale_frozen = False
 
-        self.update_scale(sonar_rf, slam_rf, stamp_s, roll, pitch, logger)
+        if mono_imu:
+            self.first_scale_time = stamp_s
+            self.scale_frozen = True
+        else:
+            self.update_scale(sonar_rf, slam_rf, stamp_s, roll, pitch, logger)
 
         # Initialize map -> slam
         self.t_map_slam = t_map_slam
@@ -191,6 +198,10 @@ class SlamMap:
     def update_pose(self, t_slam_base: geometry.Pose):
         self.t_slam_base = t_slam_base
 
+    def reanchor_map_slam(self, t_map_base_ekf: geometry.Pose, t_slam_base_scaled: geometry.Pose):
+        """Re-anchor t_map_slam so that t_map_base matches t_map_base_ekf."""
+        self.t_map_slam = t_map_base_ekf.mult(t_slam_base_scaled.inverse())
+
 
 class SlamMaps:
     """A set of SLAM maps."""
@@ -202,6 +213,11 @@ class SlamMaps:
         # The current map
         self.current_map: SlamMap | None = None
 
+    def reset(self):
+        """Clear all stored maps (e.g. when ORB_SLAM3 resets)."""
+        self.maps.clear()
+        self.current_map = None
+
     def update(
         self,
         msg: orb_slam3_msgs.msg.SlamStatus,
@@ -210,10 +226,48 @@ class SlamMaps:
         t_slam_world: geometry.Pose,
         logger,
         scale_freeze_duration: float = 5.0,
+        mono_imu: bool = False,
     ):
         # Only trust the map data if we are tracking
         if msg.tracking_state != orb_slam3_msgs.msg.SlamStatus.TRACKING_OK:
             logger.error('Not tracking, do not update')
+            return
+
+        stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
+
+        if mono_imu:
+            if not msg.imu_initialized:
+                logger.error('IMU not initialized in SlamMaps.update')
+                return
+
+            if self.current_map is None or msg.map_id not in self.maps:
+                logger.info(f'Create mono_imu map {msg.map_id}')
+                t_map_base_ekf = sub.t_map_base_ned.ned_to_enu_standard()
+
+                # Post-InitializeIMU world frame is gravity-aligned (+Z up) with origin at KF0 IMU pose,
+                # so anchor using the actual current camera pose rather than identity.
+                t_world_camera_0 = geometry.Pose.from_pose_msg(msg.pose)
+                t_slam_camera_0 = t_slam_world.mult(t_world_camera_0)
+                t_slam_link_0 = t_slam_camera_0.mult(geometry.Pose.T_OPENCV_FLU)
+                t_slam_base_0 = t_slam_link_0.mult(t_link_base)
+                t_map_slam = t_map_base_ekf.mult(t_slam_base_0.inverse())
+
+                self.maps[msg.map_id] = SlamMap(
+                    msg.map_id,
+                    0.0,
+                    0.0,
+                    t_map_slam,
+                    stamp_s,
+                    0.0,
+                    0.0,
+                    logger,
+                    scale_freeze_duration=scale_freeze_duration,
+                    mono_imu=True,
+                )
+                self.current_map = self.maps[msg.map_id]
+            elif self.current_map.map_id != msg.map_id:
+                logger.error(f'Switch to map {msg.map_id} -- WTF')
+                self.current_map = self.maps[msg.map_id]
             return
 
         sonar_rf_distance = sub.sonar_rf_distance
@@ -222,7 +276,6 @@ class SlamMaps:
             return
 
         slam_rf_distance = rf_distance(msg)
-        stamp_s = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9
         roll, pitch, _ = sub.t_map_base_ned.get_euler()
 
         if self.current_map is None or msg.map_id not in self.maps:

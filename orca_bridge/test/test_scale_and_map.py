@@ -218,6 +218,141 @@ class TestScaleAndMap(unittest.TestCase):
         for i in range(4):
             self.assertAlmostEqual(t_map_base_0.q[i], expected_ekf_enu.q[i], places=5)
 
+    def test_mono_imu_fixed_scale_without_sonar(self):
+        """In mono_imu mode, SlamMaps waits for imu_initialized, ignores missing sonar, and fixes scale at 1.0."""
+        sub_mock = MagicMock(spec=Sub)
+        sub_mock.sonar_rf_distance = None
+        pose_ned = Pose(p=(0.0, 0.0, 2.0))
+        sub_mock.t_map_base_ned = pose_ned
+
+        t_link_base = Pose()
+        t_link_base.set_euler(0.0, -math.pi / 2, 0.0)
+        t_slam_world = Pose()  # Identity in mono_imu mode
+
+        slam_maps = SlamMaps()
+        msg = SlamStatus()
+        msg.map_id = 0
+        msg.tracking_state = SlamStatus.TRACKING_OK
+        msg.imu_initialized = False
+        msg.header.stamp.sec = 50
+        msg.header.stamp.nanosec = 0
+        msg.pose.orientation.w = 1.0
+
+        # Pre-IMU-init: should not create a map
+        slam_maps.update(
+            msg,
+            sub_mock,
+            t_link_base,
+            t_slam_world,
+            self.logger,
+            mono_imu=True,
+        )
+        self.assertIsNone(slam_maps.current_map)
+
+        # Post-IMU-init: creates map with scale=1.0 and scale_frozen=True despite sonar_rf_distance=None
+        msg.imu_initialized = True
+        msg.header.stamp.sec = 53
+        slam_maps.update(
+            msg,
+            sub_mock,
+            t_link_base,
+            t_slam_world,
+            self.logger,
+            mono_imu=True,
+        )
+        current_map = slam_maps.current_map
+        self.assertIsNotNone(current_map)
+        self.assertEqual(current_map.scale, 1.0)  # type: ignore
+        self.assertTrue(current_map.scale_frozen)  # type: ignore
+        self.assertEqual(current_map.sonar_rf, 0.0)  # type: ignore
+        self.assertEqual(current_map.slam_rf, 0.0)  # type: ignore
+        self.assertEqual(current_map.init_stamp_s, 53.0)  # type: ignore
+
+    def test_mono_imu_map_initialization_from_actual_pose(self):
+        """In mono_imu mode, t_map_slam anchors using the actual gravity-aligned msg.pose rather than identity."""
+        sub_mock = MagicMock(spec=Sub)
+        sub_mock.sonar_rf_distance = None
+        pose_ned = Pose(p=(1.5, -2.5, 2.0))
+        pose_ned.set_euler(math.radians(2.0), math.radians(-1.5), math.radians(30.0))
+        sub_mock.t_map_base_ned = pose_ned
+
+        # Downward camera: base_link -> camera_link has pitch +90 deg, so camera_link -> base_link has pitch -90 deg
+        t_base_link = Pose()
+        t_base_link.set_euler(0.0, math.pi / 2, 0.0)
+        t_link_base = t_base_link.inverse()
+        t_slam_world = Pose()
+
+        # Non-trivial post-InitializeIMU camera pose in ORB_SLAM3's Z-up world frame
+        cam_pose_world = Pose(p=(-0.05, 0.30, 1.58))
+        cam_pose_world.set_euler(math.radians(178.0), math.radians(1.5), math.radians(-60.0))
+
+        slam_maps = SlamMaps()
+        msg = SlamStatus()
+        msg.map_id = 0
+        msg.tracking_state = SlamStatus.TRACKING_OK
+        msg.imu_initialized = True
+        msg.header.stamp.sec = 56
+        msg.header.stamp.nanosec = 300000000
+        msg.pose = cam_pose_world.to_pose_msg()
+
+        slam_maps.update(
+            msg,
+            sub_mock,
+            t_link_base,
+            t_slam_world,
+            self.logger,
+            mono_imu=True,
+        )
+
+        current_map = slam_maps.current_map
+        self.assertIsNotNone(current_map)
+
+        t_slam_cam = t_slam_world.mult(cam_pose_world)
+        t_slam_link = t_slam_cam.mult(Pose.T_OPENCV_FLU)
+        t_slam_base = t_slam_link.mult(t_link_base)
+        t_map_base = current_map.t_map_slam.mult(t_slam_base)  # type: ignore
+        expected_ekf_enu = pose_ned.ned_to_enu_standard()
+
+        for i in range(3):
+            self.assertAlmostEqual(t_map_base.p[i], expected_ekf_enu.p[i], places=5)
+        dot = sum(a * b for a, b in zip(t_map_base.q, expected_ekf_enu.q))
+        self.assertAlmostEqual(abs(dot), 1.0, places=5)
+
+    def test_reanchor_map_slam_on_viba_step_and_reset(self):
+        """Re-anchoring t_map_slam absorbs VIBA world jumps seamlessly, and reset() clears cached maps."""
+        t_map_base_ekf = Pose(p=(2.0, 3.0, -1.5))
+        t_map_base_ekf.set_euler(0.05, -0.02, 0.8)
+
+        smap = SlamMap(
+            map_id=0,
+            sonar_rf=0.0,
+            slam_rf=0.0,
+            t_map_slam=Pose(),
+            stamp_s=10.0,
+            roll=0.0,
+            pitch=0.0,
+            logger=self.logger,
+            mono_imu=True,
+        )
+
+        # Simulate a VIBA step jumping t_slam_base to a new position/orientation
+        jumped_slam_base = Pose(p=(-0.4, 1.2, 1.9))
+        jumped_slam_base.set_euler(0.05, -0.02, -0.3)
+        smap.reanchor_map_slam(t_map_base_ekf, jumped_slam_base)
+
+        recovered_map_base = smap.t_map_slam.mult(jumped_slam_base)
+        for i in range(3):
+            self.assertAlmostEqual(recovered_map_base.p[i], t_map_base_ekf.p[i], places=5)
+        dot = sum(a * b for a, b in zip(recovered_map_base.q, t_map_base_ekf.q))
+        self.assertAlmostEqual(abs(dot), 1.0, places=5)
+
+        slam_maps = SlamMaps()
+        slam_maps.maps[0] = smap
+        slam_maps.current_map = smap
+        slam_maps.reset()
+        self.assertIsNone(slam_maps.current_map)
+        self.assertEqual(len(slam_maps.maps), 0)
+
 
 if __name__ == '__main__':
     unittest.main()

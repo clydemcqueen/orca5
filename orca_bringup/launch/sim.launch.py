@@ -11,7 +11,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
@@ -42,6 +42,11 @@ def generate_launch_description():
             description='Enable SLAM processing?',
         ),
         DeclareLaunchArgument(
+            'mono_imu',
+            default_value='False',
+            description='Use Monocular-Inertial SLAM?',
+        ),
+        DeclareLaunchArgument(
             'rviz',
             default_value='True',
             description='Launch rviz?',
@@ -68,7 +73,15 @@ def generate_launch_description():
                 'ardusub': LaunchConfiguration('ardusub'),
                 'gz_gui': LaunchConfiguration('gz_gui'),
                 'speedup': LaunchConfiguration('speedup'),
-                'enable_dds': LaunchConfiguration('enable_dds'),
+                'enable_dds': PythonExpression(
+                    [
+                        "'True' if ('",
+                        LaunchConfiguration('enable_dds'),
+                        "'.lower() == 'true' or '",
+                        LaunchConfiguration('mono_imu'),
+                        "'.lower() == 'true') else 'False'",
+                    ]
+                ),
             }.items(),
         ),
         # Launch pose_to_path node for slam_path topic
@@ -104,6 +117,7 @@ def generate_launch_description():
                 '--include-hidden-topics',
                 '/clock',
                 '/annotated_image',
+                '/ap/imu/experimental/data',
                 '/bridge_status',
                 '/camera_info',
                 '/camera_pose',
@@ -145,6 +159,7 @@ def generate_launch_description():
                 'bridge': LaunchConfiguration('bridge'),
                 'orb': LaunchConfiguration('orb'),
                 'enable_slam': LaunchConfiguration('enable_slam'),
+                'mono_imu': LaunchConfiguration('mono_imu'),
                 'mav_device': 'udpin:0.0.0.0:14551',
                 'settings_file': os.path.join(orca_bringup_dir, 'param', 'sim.yaml'),
             }.items(),
