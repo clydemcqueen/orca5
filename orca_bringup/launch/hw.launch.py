@@ -11,7 +11,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, OpaqueFunction
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
@@ -129,6 +129,25 @@ def launch_setup(context, *args, **kwargs):
             arguments=['-d', os.path.join(orca_bringup_dir, 'rviz', 'hw.rviz')],
             condition=IfCondition(LaunchConfiguration('rviz')),
         ),
+        # Launch micro_ros_agent if DDS is enabled
+        Node(
+            package='micro_ros_agent',
+            executable='micro_ros_agent',
+            name='micro_ros_agent',
+            output='screen',
+            arguments=['udp4', '--middleware', 'dds', '--verbose', '4', '--port', '2019'],
+            condition=IfCondition(
+                PythonExpression(
+                    [
+                        "'",
+                        LaunchConfiguration('enable_dds'),
+                        "'.lower() == 'true' or '",
+                        LaunchConfiguration('mono_imu'),
+                        "'.lower() == 'true'",
+                    ]
+                )
+            ),
+        ),
         # Bring up SLAM nodes
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(orca_bringup_dir, 'launch', 'bringup.launch.py')),
@@ -172,6 +191,11 @@ def generate_launch_description():
                 'enable_slam',
                 default_value='False',
                 description='Enable SLAM processing?',
+            ),
+            DeclareLaunchArgument(
+                'enable_dds',
+                default_value='False',
+                description='Enable ArduPilot DDS (launch micro_ros_agent)?',
             ),
             DeclareLaunchArgument(
                 'mono_imu',

@@ -1,6 +1,11 @@
 # Repositories required by all build targets
 repositories:
 
+  micro_ros_agent:
+    type: git
+    url: https://github.com/micro-ROS/micro-ROS-Agent.git
+    version: jazzy
+
   orb_slam3_ros:
     type: git
     url: https://github.com/clydemcqueen/orb_slam3_ros.git

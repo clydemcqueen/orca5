@@ -68,7 +68,7 @@ RUN vcs import --recursive < /tmp/common.repos \
 WORKDIR /home/$USERNAME/colcon_ws
 RUN sudo apt-get update \
   && rosdep update \
-  && rosdep install -y --from-paths . --ignore-src \
+  && rosdep install -y --from-paths . --ignore-src --skip-keys microxrcedds_agent \
   && sudo rm -rf /var/lib/apt/lists/*
 
 # Build everything so far (ignore orca5 until mounted at runtime)
@@ -203,7 +203,7 @@ RUN vcs import --recursive < /tmp/hw.repos \
 # Run rosdep over hw repos
 WORKDIR /home/$USERNAME/colcon_ws
 RUN sudo apt-get update \
-  && rosdep install -y --from-paths . --ignore-src \
+  && rosdep install -y --from-paths . --ignore-src --skip-keys microxrcedds_agent \
   && sudo rm -rf /var/lib/apt/lists/*
 
 # Build everything so far
