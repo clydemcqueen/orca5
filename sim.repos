@@ -4,7 +4,7 @@ repositories:
   ardupilot:
     type: git
     url: https://github.com/clydemcqueen/ardupilot.git
-    version: ap_4_7_fix_json_rng
+    version: ap_orca5
 
   ardupilot_gazebo:
     type: git

@@ -1,7 +1,7 @@
 # Repositories required by the hw target
 repositories:
 
-  clydemcqueen/gscam2:
+  gscam2:
     type: git
     url: https://github.com/clydemcqueen/gscam2
     version: main
