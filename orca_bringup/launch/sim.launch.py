@@ -116,7 +116,7 @@ def generate_launch_description():
                 '--use-sim-time',
                 '--include-hidden-topics',
                 '/clock',
-                '/annotated_image',
+                # '/annotated_image',
                 '/ap/imu/experimental/data',
                 '/bridge_status',
                 '/camera_info',

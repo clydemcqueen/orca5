@@ -12,6 +12,7 @@ from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -58,6 +59,11 @@ def generate_launch_description():
             default_value=os.path.join(get_package_share_directory('orb_slam3_ros'), 'Vocabulary', 'ORBvoc.txt'),
             description='Path to ORB_SLAM3 vocabulary file',
         ),
+        DeclareLaunchArgument(
+            'image_time_offset_sec',
+            default_value='0.0',
+            description='Offset (seconds) added to image header stamps to align with IMU',
+        ),
         Node(
             package='orb_slam3_ros',
             executable='orb_slam3_ros_mono',
@@ -97,6 +103,9 @@ def generate_launch_description():
                     'settings_file': LaunchConfiguration('settings_file'),
                     'world_frame_id': 'world',
                     'enable_slam': LaunchConfiguration('enable_slam'),
+                    'image_time_offset_sec': ParameterValue(
+                        LaunchConfiguration('image_time_offset_sec'), value_type=float
+                    ),
                 }
             ],
             condition=IfCondition(

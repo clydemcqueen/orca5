@@ -18,10 +18,11 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
+    orca_bringup_dir = get_package_share_directory('orca_bringup')
     orca_gz_dir = get_package_share_directory('orca_gz')
     default_world = os.path.join(orca_gz_dir, 'worlds', 'pnw.world')
     default_sub_parm = os.path.join(orca_gz_dir, 'config', 'sim.parm')
-    default_btn_parm = os.path.join(orca_gz_dir, 'config', 'btn.parm')
+    default_btn_parm = os.path.join(orca_bringup_dir, 'config', 'btn.parm')
 
     nodes = [
         DeclareLaunchArgument(

@@ -49,3 +49,6 @@ DDS_IP2 2
 DDS_IP3 1
 DDS_UDP_PORT 2019
 DDS_MAX_RETRY 0
+
+# orca5_1 and topside are using chrony to sync time; force ArduSub to use hardware time
+BRD_RTC_TYPES 4

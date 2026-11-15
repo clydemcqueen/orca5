@@ -11,7 +11,7 @@ File.version: "1.0"
 
 Camera.type: "PinHole"
 
-# Camera calibration and distortion parameters (OpenCV) 
+# Camera calibration and distortion parameters (OpenCV)
 Camera1.fx: 518.3579167307581
 Camera1.fy: 518.612580773718
 Camera1.cx: 389.2683968399588
@@ -29,7 +29,7 @@ Camera.height: 600
 Camera.newWidth: 800
 Camera.newHeight: 600
 
-# Camera frames per second 
+# Camera frames per second
 Camera.fps: 10
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
@@ -66,18 +66,18 @@ IMU.Frequency: 153.0
 #--------------------------------------------------------------------------------------------
 
 # ORB Extractor: Number of features per image
-ORBextractor.nFeatures: 1000
+ORBextractor.nFeatures: 800
 
-# ORB Extractor: Scale factor between levels in the scale pyramid 	
+# ORB Extractor: Scale factor between levels in the scale pyramid
 ORBextractor.scaleFactor: 1.2
 
-# ORB Extractor: Number of levels in the scale pyramid	
+# ORB Extractor: Number of levels in the scale pyramid
 ORBextractor.nLevels: 8
 
 # ORB Extractor: Fast threshold
 # Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
 # Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
-# You can lower these values if your images have low contrast			
+# You can lower these values if your images have low contrast
 ORBextractor.iniThFAST: 20
 ORBextractor.minThFAST: 7
 
@@ -87,6 +87,9 @@ ORBextractor.minThFAST: 7
 
 # How long until we create a new map, in seconds; must be a real number
 System.timeRecentlyLost: 10000000.0
+
+# Local map search radius multiplier after VIBA2 (ORB-SLAM3 default is 2)
+System.thPostVIBA2: 3
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters (these are no longer used, but the code still requires them)

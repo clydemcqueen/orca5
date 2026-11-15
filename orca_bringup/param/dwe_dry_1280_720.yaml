@@ -88,6 +88,9 @@ ORBextractor.minThFAST: 7
 # How long until we create a new map, in seconds; must be a real number
 System.timeRecentlyLost: 10000000.0
 
+# Local map search radius multiplier after VIBA2 (ORB-SLAM3 default is 2)
+System.thPostVIBA2: 3
+
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters (these are no longer used, but the code still requires them)
 #---------------------------------------------------------------------------------------------

@@ -31,7 +31,7 @@ def launch_setup(context, *args, **kwargs):
     # Note: in orca5_1, BlueOS is configured to send 10 fps
     mav_device = 'udpin:0.0.0.0:14551'
     camera_name = 'dwe_camera'
-    gscam_config = 'udpsrc port=5601 ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264 ! rtpjitterbuffer ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert'
+    gscam_config = 'udpsrc port=5601 ! application/x-rtp,media=video,clock-rate=90000,encoding-name=H264 ! rtpjitterbuffer latency=10 ! rtph264depay ! h264parse ! avdec_h264 max-threads=1 ! videoconvert'
 
     urdf_file_path = os.path.join(orca_bringup_dir, 'urdf', 'orca5_1.urdf')
     with open(urdf_file_path, 'r') as infp:
@@ -95,7 +95,7 @@ def launch_setup(context, *args, **kwargs):
                 'bag',
                 'record',
                 '--include-hidden-topics',
-                '/annotated_image',
+                # '/annotated_image',
                 '/ap/imu/experimental/data',
                 '/bridge_status',
                 '/camera_info',
@@ -159,6 +159,7 @@ def launch_setup(context, *args, **kwargs):
                 'mono_imu': LaunchConfiguration('mono_imu'),
                 'mav_device': mav_device,
                 'settings_file': param_file_path,
+                'image_time_offset_sec': '-0.04',
             }.items(),
         ),
     ]
